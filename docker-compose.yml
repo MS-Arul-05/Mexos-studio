@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tshirt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tshirt
+    ports:
+      # Host port is configurable to avoid clashing with other local Postgres
+      # instances; container port stays 5432. Set DB_HOST_PORT in .env to override.
+      - '${DB_HOST_PORT:-5544}:5432'
+    volumes:
+      - tshirt-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d tshirt']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  tshirt-pgdata:

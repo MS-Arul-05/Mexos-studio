@@ -1,0 +1,147 @@
+# Hardened production topology. Run: docker compose -f docker-compose.prod.yml up -d
+# Secrets come from a gitignored .env.production (env_file) or your orchestrator's
+# secret store — never bake them into the image.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      # api talks to postgres over the private compose network, not the host.
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?schema=public&sslmode=disable
+      # Shared rate limits + notification job queue. Required before running
+      # more than one api replica (otherwise limits are per-instance).
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ── Container hardening ──
+    read_only: true # immutable root filesystem
+    tmpfs:
+      - /tmp # writable scratch only, in memory
+    cap_drop:
+      - ALL # drop all Linux capabilities
+    security_opt:
+      - no-new-privileges:true # block setuid privilege escalation
+    ulimits:
+      nofile: 65535
+    deploy:
+      resources:
+        limits: # cap blast radius / noisy-neighbor
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 256M
+    # Only the reverse proxy should reach the app — publish to loopback only.
+    ports:
+      - '127.0.0.1:4000:4000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:4000/api/health/ready',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # Slow-query observability (RUNBOOK "high-latency"): pg_stat_statements for
+    # aggregate query stats + log any statement slower than 500ms.
+    command:
+      [
+        'postgres',
+        '-c',
+        'shared_preload_libraries=pg_stat_statements',
+        '-c',
+        'pg_stat_statements.track=all',
+        '-c',
+        'log_min_duration_statement=500',
+      ]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tshirt
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    # No host port — the DB is reachable only on the private network.
+    expose:
+      - '5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d tshirt']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF persistence + noeviction: the queue must never silently drop jobs
+    # under memory pressure (rate-limit keys are small and TTL-bound anyway).
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    security_opt:
+      - no-new-privileges:true
+    # No host port — reachable only on the private network.
+    expose:
+      - '6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── Metric exporters (feed the tshirt-dependencies alert rules) ──
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    # Scraped by Prometheus over the private network only.
+    expose:
+      - '9187'
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - '9121'
+
+volumes:
+  pgdata:
+  redisdata:

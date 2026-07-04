@@ -1,0 +1,44 @@
+# Prometheus scrape config for the T-shirt API.
+# The API exposes /metrics (token-guarded — set METRICS_TOKEN and reference it here).
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'tshirt-api'
+    metrics_path: /metrics
+    # If METRICS_TOKEN is set on the API, authenticate the scrape:
+    # authorization:
+    #   type: Bearer
+    #   credentials: '<METRICS_TOKEN>'
+    static_configs:
+      - targets: ['api:4000'] # compose/k8s service name:port
+        labels:
+          service: tshirt-api
+
+  # Dependency exporters (provisioned in docker-compose.prod.yml).
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: tshirt-db
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: tshirt-redis
+
+  # Optional: host disk/CPU (HostDiskUsageHigh alert). Run node_exporter on the
+  # Docker host and uncomment:
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:9100']

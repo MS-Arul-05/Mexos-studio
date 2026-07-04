@@ -1,0 +1,185 @@
+# Alert rules derived from the metrics the API actually emits (observability/metrics.ts)
+# and its SLOs. Every expression references a real series — no speculative metrics.
+groups:
+  - name: tshirt-api-availability
+    rules:
+      - alert: ApiInstanceDown
+        expr: up{job="tshirt-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: 'API instance {{ $labels.instance }} is down'
+          runbook: 'RUNBOOK.md#api-instance-down'
+
+      - alert: ApiHighErrorRate
+        # >5% of requests returning 5xx over 5m (SLO: <1% error budget).
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: '5xx error rate above 5% for 5m'
+          runbook: 'RUNBOOK.md#high-error-rate'
+
+      - alert: ApiHighLatencyP95
+        # p95 request latency > 1s over 5m (SLO: p95 < 500ms).
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'p95 latency above 1s'
+          runbook: 'RUNBOOK.md#high-latency'
+
+  - name: tshirt-api-business-security
+    rules:
+      - alert: PaymentFailureSpike
+        expr: |
+          sum(rate(payments_total{outcome="failed"}[10m]))
+            > sum(rate(payments_total{outcome="success"}[10m]))
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Payment failures exceeding successes — check gateway/webhook'
+          runbook: 'RUNBOOK.md#payment-failures'
+
+      - alert: AuthBruteForceSuspected
+        # Sustained OTP verification failures — possible credential attack.
+        expr: sum(rate(auth_attempts_total{outcome="failure"}[5m])) > 5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'High OTP failure rate — possible brute force'
+          runbook: 'RUNBOOK.md#auth-brute-force'
+
+      - alert: RateLimitStorm
+        expr: sum(rate(rate_limit_trips_total[5m])) > 20
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Sustained rate-limit trips — abuse or misconfigured client'
+          runbook: 'RUNBOOK.md#rate-limit-storm'
+
+  - name: tshirt-api-runtime
+    rules:
+      - alert: EventLoopLagHigh
+        expr: nodejs_eventloop_lag_p99_seconds > 0.2
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Node event-loop p99 lag > 200ms — CPU saturation'
+          runbook: 'RUNBOOK.md#event-loop-lag'
+
+      - alert: ProcessMemoryHigh
+        expr: process_resident_memory_bytes > 4.5e8
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'RSS > 450MB (container limit 512MB) — possible leak'
+          runbook: 'RUNBOOK.md#memory-pressure'
+
+  # ── Notification queue (BullMQ) — app-emitted metrics, no exporter needed ──
+  - name: tshirt-notification-queue
+    rules:
+      - alert: NotificationQueueBacklog
+        # Sustained waiting backlog: worker down or can't keep up.
+        expr: notification_queue_depth{state="waiting"} > 100
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Notification queue backlog >100 waiting for 10m'
+          runbook: 'RUNBOOK.md#notification-dlq'
+
+      - alert: NotificationDeadLetterGrowth
+        # Any job exhausting its 5 retries lands in the failed set (DLQ).
+        expr: increase(notification_jobs_total{outcome="dead_letter"}[15m]) > 0
+        for: 0m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Notifications moved to dead-letter in the last 15m'
+          runbook: 'RUNBOOK.md#notification-dlq'
+
+      - alert: NotificationDispatchErrors
+        # Inline fallback delivery also failing — provider outage or bad creds.
+        expr: sum(rate(notification_jobs_total{outcome="error"}[10m])) > 0.05
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Notification dispatch failing even inline — check provider'
+          runbook: 'RUNBOOK.md#notification-dlq'
+
+  # ── Dependencies — served by postgres-exporter / redis-exporter
+  #    (provisioned in docker-compose.prod.yml) ──
+  - name: tshirt-dependencies
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: 'PostgreSQL unreachable — API readiness will fail'
+          runbook: 'RUNBOOK.md#database-outage'
+
+      - alert: PostgresConnectionSaturation
+        # >80% of max_connections in use. Prisma pool ≈ cpus*2+1 per replica.
+        expr: |
+          sum(pg_stat_activity_count) > 0.8 * pg_settings_max_connections
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Postgres connections >80% of max — add PgBouncer or reduce replicas'
+          runbook: 'RUNBOOK.md#database-outage'
+
+      - alert: RedisDown
+        # Warning, not critical: the API is verified to fail open (rate limits
+        # in-memory, notifications inline) — but queue durability is lost.
+        expr: redis_up == 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Redis down — API degraded (per-instance limits, inline notifications)'
+          runbook: 'RUNBOOK.md#redis-outage'
+
+      - alert: RedisMemoryNearLimit
+        # noeviction policy: writes FAIL at 100% — act before that.
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Redis >90% of maxmemory (noeviction: writes will fail at 100%)'
+          runbook: 'RUNBOOK.md#redis-outage'
+
+  # ── Host & backups ──
+  - name: tshirt-host-backup
+    rules:
+      - alert: ApiCpuHigh
+        # App-process CPU (emitted by prom-client; no node_exporter needed).
+        expr: rate(process_cpu_seconds_total{job="tshirt-api"}[5m]) > 0.85
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: 'API process CPU >85% of one core for 15m — scale replicas'
+          runbook: 'RUNBOOK.md#event-loop-lag'
+
+      - alert: HostDiskUsageHigh
+        # Requires node_exporter on the host (see BACKUP_AND_DR.md §monitoring).
+        expr: |
+          (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) < 0.15
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Host filesystem <15% free — Postgres/Redis persistence at risk'
+          runbook: 'RUNBOOK.md#database-outage'
+
+      - alert: BackupTooOld
+        # backup_last_success_timestamp_seconds is emitted by the backup job
+        # (pgBackRest path — see deploy/BACKUP_AND_DR.md). Managed providers
+        # (RDS/Cloud SQL/...) alert natively instead; keep whichever applies.
+        expr: time() - backup_last_success_timestamp_seconds > 90000
+        for: 0m
+        labels: { severity: critical }
+        annotations:
+          summary: 'No successful DB backup in >25h — RPO breached'
+          runbook: 'deploy/BACKUP_AND_DR.md'

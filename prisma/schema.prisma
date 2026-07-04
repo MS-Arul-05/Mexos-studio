@@ -1,0 +1,385 @@
+// Prisma schema — Custom T-Shirt Brand Backend
+//
+// Source of truth: 03_DESIGN.md Section 1. This is a faithful translation with a
+// small set of documented, additive refinements (money precision + indexes) —
+// see the header of each section and DECISIONS.md for the rationale. No entity or
+// field shapes were changed from the design doc.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users & Auth ──────────────────────────────────────────
+model User {
+  id           String   @id @default(uuid())
+  mobileNumber String   @unique
+  countryCode  String   @default("+91")
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  customOrders  CustomOrder[]
+  refreshTokens RefreshToken[]
+}
+
+model OtpRequest {
+  id           String   @id @default(uuid())
+  mobileNumber String
+  otpHash      String
+  expiresAt    DateTime
+  verified     Boolean  @default(false)
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([mobileNumber])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Address {
+  id        String  @id @default(uuid())
+  userId    String
+  label     String? // "Home", "Office"
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  isDefault Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ── Catalog ───────────────────────────────────────────────
+model Category {
+  id       String    @id @default(uuid())
+  name     String
+  slug     String    @unique
+  parentId String? // self-reference kept as scalar per design doc; tree built in service layer
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  currency    String   @default("INR")
+  fabric      String?
+  careInfo    String?
+  categoryId  String
+  isFeatured  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  // Storefront display fields (product cards + detail page).
+  originalPrice Decimal? @db.Decimal(10, 2) // compare-at price (strike-through)
+  fit           String? // "regular" | "oversized"
+  gsm           String? // e.g. "180 GSM"
+  tag           String? // badge: "Bestseller" | "New"
+  rating        Decimal? @db.Decimal(2, 1) // display rating
+  reviewCount   Int      @default(0)
+
+  category   Category         @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+
+  @@index([categoryId])
+  @@index([isFeatured, isActive])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  sortOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id        String  @id @default(uuid())
+  productId String
+  size      String // S, M, L, XL, XXL
+  color     String
+  colorHex  String? // storefront swatch hex
+  stock     Int     @default(0)
+  sku       String  @unique
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ── Offers ────────────────────────────────────────────────
+model Offer {
+  id             String       @id @default(uuid())
+  title          String
+  description    String?
+  bannerImageUrl String?
+  couponCode     String?
+  discountType   DiscountType
+  discountValue  Decimal      @db.Decimal(10, 2)
+  minOrderValue  Decimal?     @db.Decimal(10, 2)
+  startsAt       DateTime
+  endsAt         DateTime
+  isActive       Boolean      @default(true)
+  // Redemption caps (null = unlimited). Enforced in the order service + DB uniques.
+  maxRedemptionsPerUser Int?
+  maxRedemptionsTotal   Int?
+
+  redemptions CouponRedemption[]
+
+  @@index([isActive])
+  @@index([couponCode])
+}
+
+// One row per successful coupon application. Prevents reuse/stacking abuse: a
+// per-user cap is enforced in the service, and (offerId, orderId) is unique so a
+// given order can only redeem an offer once.
+model CouponRedemption {
+  id             String   @id @default(uuid())
+  offerId        String
+  orderId        String
+  userId         String?
+  couponCode     String
+  discountAmount Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, orderId])
+  @@index([couponCode])
+  @@index([userId])
+}
+
+// Append-only security & admin audit trail (OWASP A09). Never contains secrets,
+// tokens, OTPs, or card data — only actor identity, action, and coarse metadata.
+model AuditLog {
+  id         String   @id @default(uuid())
+  event      String // e.g. "auth.login", "admin.order.status", "payment.success"
+  actorType  String // "user" | "guest" | "admin" | "system"
+  actorId    String? // user id, admin label, or null
+  targetType String? // "order" | "product" | "offer" | ...
+  targetId   String?
+  ip         String?
+  outcome    String   @default("success") // "success" | "failure" | "denied"
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([event])
+  @@index([actorType, actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+// ── Custom Orders ─────────────────────────────────────────
+model CustomOrder {
+  id                String            @id @default(uuid())
+  userId            String?
+  baseType          String // T-shirt base type
+  size              String
+  quantity          Int               @default(1)
+  color             String?
+  printPlacement    String?
+  printType         String? // "print" | "embroidery"
+  designDescription String?
+  uploadedFileUrl   String?
+  deliveryDeadline  DateTime?
+  contactName       String
+  contactMobile     String
+  pricingMode       PricingMode       @default(WHATSAPP_CONFIRMED)
+  quotedPrice       Decimal?          @db.Decimal(10, 2)
+  status            CustomOrderStatus @default(DRAFT)
+  orderId           String? // linked once converted to a formal Order
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user  User?  @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderId])
+}
+
+enum PricingMode {
+  INSTANT
+  WHATSAPP_CONFIRMED
+}
+
+enum CustomOrderStatus {
+  DRAFT
+  SUBMITTED
+  QUOTED
+  CONFIRMED
+  REJECTED
+}
+
+// ── Orders ────────────────────────────────────────────────
+model Order {
+  id                String      @id @default(uuid())
+  userId            String?
+  orderSource       OrderSource
+  status            OrderStatus @default(PENDING_PAYMENT)
+  subtotal          Decimal     @db.Decimal(10, 2)
+  discount          Decimal     @default(0) @db.Decimal(10, 2)
+  total             Decimal     @db.Decimal(10, 2)
+  currency          String      @default("INR")
+  shippingAddressId String? // kept as scalar per design doc (no hard FK to Address)
+  // Inline address snapshot for storefront checkout (guests have no Address rows):
+  // { name, phone, line1, line2?, city, state, pincode }
+  shippingAddress   Json?
+  shippingFee       Decimal       @default(0) @db.Decimal(10, 2)
+  paymentMethod     PaymentMethod @default(ONLINE)
+  guestMobile       String? // for guest/WhatsApp orders without account
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user          User?                @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+  customOrders  CustomOrder[]
+  payment       Payment?
+  statusHistory OrderStatusHistory[]
+
+  // Composite serves the account order-history query (WHERE userId ORDER BY createdAt DESC,
+  // paginated) with an index-ordered scan — no sort, no seq scan. Measured ~15x faster at
+  // 20k rows (14.6ms→0.9ms). Covers plain userId lookups as a prefix, so no separate
+  // [userId] index is needed.
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([guestMobile])
+  @@index([status])
+}
+
+enum OrderSource {
+  WEB
+  WHATSAPP
+}
+
+// COD orders skip the gateway: stock reserved + CONFIRMED at placement.
+enum PaymentMethod {
+  ONLINE
+  COD
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  IN_PRODUCTION
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  PAYMENT_FAILED
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String?
+  variantId String?
+  name      String // snapshot at time of order
+  size      String?
+  color     String?
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  changedBy String? // admin user id or "system"
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+// ── Payments ──────────────────────────────────────────────
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String        @unique
+  gateway           String // "razorpay" | "payu" | "stripe"
+  gatewayOrderId    String
+  gatewayPaymentId  String?
+  status            PaymentStatus @default(CREATED)
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  rawWebhookPayload Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([gatewayPaymentId])
+  @@index([gatewayOrderId])
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+// ── WhatsApp / Notifications ─────────────────────────────
+model WhatsAppMessageLog {
+  id             String   @id @default(uuid())
+  toNumber       String
+  templateName   String?
+  payload        Json
+  status         String // "sent" | "delivered" | "failed" | "queued"
+  relatedOrderId String?
+  createdAt      DateTime @default(now())
+
+  @@index([relatedOrderId])
+}
+
+// ── Contact / Inquiries ──────────────────────────────────
+model ContactInquiry {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  mobile    String?
+  message   String
+  createdAt DateTime @default(now())
+}

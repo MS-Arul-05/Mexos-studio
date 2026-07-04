@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T-Shirt Backend — API Test Console</title>
+    <style>
+      :root { --bg:#0f1420; --panel:#171d2b; --line:#26304a; --fg:#e6ebf5; --muted:#8a97b3; --accent:#4f8cff; --ok:#2ecc71; --err:#ff6b6b; }
+      * { box-sizing: border-box; }
+      body { margin:0; font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+      header { padding:14px 20px; background:var(--panel); border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+      header h1 { font-size:16px; margin:0; }
+      .badge { font-size:11px; color:var(--muted); border:1px solid var(--line); padding:2px 8px; border-radius:20px; }
+      .wrap { display:grid; grid-template-columns: 1fr 1fr; gap:16px; padding:16px; align-items:start; }
+      @media (max-width: 900px){ .wrap { grid-template-columns:1fr; } }
+      .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
+      .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 10px; }
+      label { display:block; font-size:12px; color:var(--muted); margin:8px 0 3px; }
+      input, select { width:100%; padding:7px 9px; background:#0d1220; border:1px solid var(--line); color:var(--fg); border-radius:6px; }
+      .row { display:flex; gap:8px; } .row > * { flex:1; }
+      button { cursor:pointer; background:var(--accent); color:#fff; border:0; padding:8px 12px; border-radius:6px; font-weight:600; margin-top:10px; }
+      button.sec { background:#2a3550; }
+      button:hover { filter:brightness(1.08); }
+      .btns { display:flex; flex-wrap:wrap; gap:8px; }
+      .btns button { margin-top:0; }
+      pre { background:#0a0e18; border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; max-height:78vh; margin:0; white-space:pre-wrap; word-break:break-word; }
+      .state { font-size:12px; color:var(--muted); }
+      .state b { color:var(--fg); }
+      .k { color:var(--accent); }
+      .status-ok { color:var(--ok); } .status-err { color:var(--err); }
+      .hint { font-size:11px; color:var(--muted); margin-top:6px; }
+      hr { border:0; border-top:1px solid var(--line); margin:12px 0; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🧪 T-Shirt Backend — API Test Console</h1>
+      <span class="badge">dev only</span>
+      <label style="margin:0;display:flex;gap:6px;align-items:center;">Base
+        <input id="baseUrl" style="width:220px" value="" placeholder="(same origin)" />
+      </label>
+      <span class="badge" id="stateBadge"></span>
+    </header>
+
+    <div class="wrap">
+      <div>
+        <div class="card">
+          <h2>Session state</h2>
+          <div class="state" id="statePanel"></div>
+          <div class="btns"><button class="sec" onclick="clearState()">Clear tokens</button></div>
+        </div>
+
+        <div class="card">
+          <h2>Health & Catalog</h2>
+          <div class="btns">
+            <button onclick="api('GET','/api/health')">Health</button>
+            <button onclick="api('GET','/api/categories')">Categories</button>
+            <button onclick="api('GET','/api/offers')">Offers</button>
+          </div>
+          <label>Products query</label>
+          <div class="row">
+            <input id="pCategory" placeholder="category slug" />
+            <input id="pQ" placeholder="search q" />
+          </div>
+          <div class="row">
+            <input id="pMin" placeholder="minPrice" />
+            <input id="pMax" placeholder="maxPrice" />
+            <input id="pLimit" placeholder="limit" value="5" />
+          </div>
+          <div class="btns">
+            <button onclick="listProducts()">GET /products</button>
+            <button class="sec" onclick="loadSampleVariant()">Load sample variant →</button>
+          </div>
+          <label>Product detail (slug)</label>
+          <div class="row"><input id="pSlug" value="classic-crew-neck" /><button onclick="api('GET','/api/products/'+val('pSlug'))">Detail</button></div>
+        </div>
+
+        <div class="card">
+          <h2>Auth (Mobile OTP)</h2>
+          <label>Mobile (E.164)</label>
+          <input id="mobile" value="+919900112233" />
+          <div class="btns"><button onclick="sendOtp()">Send OTP</button></div>
+          <div class="hint">⚠️ OTP is printed in the <b>server console</b> (console SMS provider). Copy it below.</div>
+          <label>OTP + name</label>
+          <div class="row"><input id="otp" placeholder="6-digit OTP" /><input id="name" placeholder="name (new user)" value="Demo User" /></div>
+          <div class="btns">
+            <button onclick="verifyOtp()">Verify & login</button>
+            <button class="sec" onclick="refresh()">Refresh</button>
+            <button class="sec" onclick="logout()">Logout</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Order → Checkout → Track</h2>
+          <label>Variant ID</label>
+          <input id="variantId" placeholder="use 'Load sample variant'" />
+          <div class="row">
+            <div><label>Qty</label><input id="qty" value="2" /></div>
+            <div><label>Coupon</label><input id="coupon" value="LAUNCH20" /></div>
+          </div>
+          <label>Guest mobile (if not logged in)</label>
+          <input id="guestMobile" value="+919900112233" />
+          <div class="btns"><button onclick="placeOrder()">POST /orders</button></div>
+          <hr />
+          <label>Order ID</label>
+          <input id="orderId" />
+          <div class="btns">
+            <button onclick="api('GET','/api/orders/'+val('orderId'),null,{guest:true,auth:true})">Get order</button>
+            <button onclick="checkout()">Checkout</button>
+          </div>
+          <label>Payment ID (retry)</label>
+          <div class="row"><input id="paymentId" /><button class="sec" onclick="api('POST','/api/payments/'+val('paymentId')+'/retry',null,{guest:true,auth:true})">Retry</button></div>
+          <hr />
+          <div class="btns">
+            <button onclick="api('GET','/api/orders/track?orderId='+enc(val('orderId'))+'&mobile='+enc(val('guestMobile')))">Track (guest)</button>
+            <button onclick="api('GET','/api/account/orders',null,{auth:true})">My orders</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Custom order + WhatsApp</h2>
+          <div class="btns"><button onclick="createCustom()">Create draft custom order</button></div>
+          <label>Custom order ID</label>
+          <input id="customOrderId" />
+          <div class="btns">
+            <button onclick="api('POST','/api/custom-orders/'+val('customOrderId')+'/submit',null,{auth:true})">Submit</button>
+            <button class="sec" onclick="uploadUrl()">Get upload URL</button>
+          </div>
+          <div class="btns">
+            <button onclick="api('GET','/api/whatsapp/chat-link?customOrderId='+enc(val('customOrderId')))">Chat link (custom)</button>
+            <button class="sec" onclick="api('GET','/api/whatsapp/chat-link')">Support link</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Admin <span class="badge">X-Admin-Key</span></h2>
+          <label>Admin key</label>
+          <input id="adminKey" placeholder="ADMIN_API_KEY" />
+          <div class="btns">
+            <button onclick="api('GET','/api/admin/custom-orders',null,{admin:true})">Custom-order queue</button>
+          </div>
+          <label>Set order status</label>
+          <div class="row">
+            <select id="adminStatus">
+              <option>CONFIRMED</option><option>IN_PRODUCTION</option><option>PACKED</option>
+              <option>SHIPPED</option><option>DELIVERED</option><option>CANCELLED</option>
+            </select>
+            <button onclick="setStatus()">PATCH status</button>
+          </div>
+          <div class="hint">Uses the Order ID field on the left.</div>
+        </div>
+
+        <div class="card">
+          <h2>Response</h2>
+          <div id="statusLine" class="state"></div>
+          <pre id="out">Ready. Click any action.</pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const S = JSON.parse(localStorage.getItem('apiConsole') || '{}');
+      const save = () => localStorage.setItem('apiConsole', JSON.stringify(S));
+      const val = (id) => document.getElementById(id).value.trim();
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+      const enc = encodeURIComponent;
+      const base = () => val('baseUrl') || '';
+
+      function renderState() {
+        document.getElementById('statePanel').innerHTML =
+          `access: <b class="${S.accessToken?'status-ok':''}">${S.accessToken? 'set ✓':'—'}</b> · ` +
+          `refresh: <b>${S.refreshToken?'set ✓':'—'}</b> · ` +
+          `guestToken: <b>${S.guestToken?'set ✓':'—'}</b><br>` +
+          `admin key: <b>${val('adminKey')?'set ✓':'—'}</b>`;
+        document.getElementById('stateBadge').textContent =
+          (S.accessToken ? 'logged in' : 'guest');
+      }
+
+      async function api(method, path, body, opts = {}) {
+        const headers = { 'Content-Type': 'application/json' };
+        if (opts.auth && S.accessToken) headers['Authorization'] = 'Bearer ' + S.accessToken;
+        if (opts.guest && S.guestToken) headers['X-Guest-Token'] = S.guestToken;
+        if (opts.admin) headers['X-Admin-Key'] = val('adminKey');
+        const out = document.getElementById('out');
+        const statusLine = document.getElementById('statusLine');
+        out.textContent = '… ' + method + ' ' + path;
+        try {
+          const t0 = performance.now();
+          const res = await fetch(base() + path, {
+            method, headers, body: body ? JSON.stringify(body) : undefined,
+          });
+          const ms = Math.round(performance.now() - t0);
+          let data; const text = await res.text();
+          try { data = JSON.parse(text); } catch { data = text; }
+          statusLine.innerHTML = `<span class="${res.ok?'status-ok':'status-err'}">${method} ${path} → ${res.status}</span> · ${ms}ms`;
+          out.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+          capture(path, data);
+          renderState();
+          return data;
+        } catch (e) {
+          statusLine.innerHTML = `<span class="status-err">${method} ${path} → network error</span>`;
+          out.textContent = String(e) + '\n\n(Is the server running? Check Base URL.)';
+        }
+      }
+
+      // Auto-capture useful ids/tokens from responses.
+      function capture(path, data) {
+        const d = data && data.data;
+        if (!d) return;
+        if (d.accessToken) { S.accessToken = d.accessToken; save(); }
+        if (d.refreshToken) { S.refreshToken = d.refreshToken; save(); }
+        if (d.guestToken) { S.guestToken = d.guestToken; save(); }
+        if (path === '/api/orders' && d.id) set('orderId', d.id);
+        if (path.endsWith('/payments/checkout') && d.paymentId) set('paymentId', d.paymentId);
+        if (path === '/api/custom-orders' && d.id) set('customOrderId', d.id);
+      }
+
+      // ── Actions ──
+      function listProducts() {
+        const q = new URLSearchParams();
+        for (const [k, id] of [['category','pCategory'],['q','pQ'],['minPrice','pMin'],['maxPrice','pMax'],['limit','pLimit']]) {
+          if (val(id)) q.set(k, val(id));
+        }
+        api('GET', '/api/products?' + q.toString());
+      }
+      async function loadSampleVariant() {
+        const d = await api('GET', '/api/products/' + (val('pSlug') || 'classic-crew-neck'));
+        const v = d && d.data && d.data.variants && d.data.variants[0];
+        if (v) { set('variantId', v.id); document.getElementById('statusLine').innerHTML += ` · picked variant ${v.size}/${v.color}`; }
+      }
+      function sendOtp() { api('POST','/api/auth/otp/send',{ mobileNumber: val('mobile') }); }
+      function verifyOtp() {
+        api('POST','/api/auth/otp/verify',{ mobileNumber: val('mobile'), otp: val('otp'), name: val('name') || undefined });
+      }
+      function refresh() { api('POST','/api/auth/refresh',{ refreshToken: S.refreshToken }); }
+      function logout() { api('POST','/api/auth/logout',{ refreshToken: S.refreshToken }).then(()=>{ S.accessToken=S.refreshToken=null; save(); renderState(); }); }
+      function placeOrder() {
+        const body = { items: [{ variantId: val('variantId'), quantity: Number(val('qty')||1) }] };
+        if (val('coupon')) body.couponCode = val('coupon');
+        if (!S.accessToken && val('guestMobile')) body.guestMobile = val('guestMobile');
+        api('POST','/api/orders', body, { auth:true });
+      }
+      function checkout() { api('POST','/api/payments/checkout',{ orderId: val('orderId') },{ auth:true, guest:true }); }
+      function createCustom() {
+        api('POST','/api/custom-orders',{ baseType:'round-neck', size:'L', quantity:2, printType:'print', contactName:'Demo', contactMobile: val('mobile') }, { auth:true });
+      }
+      function uploadUrl() {
+        api('POST','/api/custom-orders/'+val('customOrderId')+'/upload-url',{ fileName:'design.png', contentType:'image/png' },{ auth:true });
+      }
+      function setStatus() {
+        api('PATCH','/api/admin/orders/'+val('orderId')+'/status',{ status: val('adminStatus'), note:'via console' },{ admin:true });
+      }
+      function clearState() { S.accessToken=S.refreshToken=S.guestToken=null; save(); renderState(); }
+
+      document.getElementById('adminKey').addEventListener('input', () => { S.adminKey = val('adminKey'); save(); renderState(); });
+      if (S.adminKey) set('adminKey', S.adminKey);
+      renderState();
+    </script>
+  </body>
+</html>
