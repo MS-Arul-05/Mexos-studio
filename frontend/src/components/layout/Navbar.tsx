@@ -52,6 +52,47 @@ export default function Navbar() {
     return pathname.startsWith(href);
   };
 
+  const iconButtonStyle: React.CSSProperties = {
+    position: "relative",
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    border: "none",
+    background: "transparent",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: "#4B5563",
+    transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+
+  const badgeStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 3,
+    right: 1,
+    width: 16,
+    height: 16,
+    backgroundColor: "#E9987A",
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: 700,
+    borderRadius: "50%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+  };
+
+  const hoverOn = (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.backgroundColor = "#FFF5EB";
+    e.currentTarget.style.color = "#E9987A";
+  };
+  const hoverOff = (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.backgroundColor = "transparent";
+    e.currentTarget.style.color = "#4B5563";
+  };
+
   return (
     <>
       <header
@@ -68,67 +109,88 @@ export default function Navbar() {
           transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 28px" }}>
+        <div className="nav-wrap" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 28px" }}>
           <div
+            className="nav-row"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               height: 72,
+              gap: 4,
             }}
           >
-            {/* Logo with mark */}
-            <Link href="/" style={{ textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
-              {/* Logo mark — peach square with "M" */}
-              <div
+            {/* Left: hamburger (mobile) + logo */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              {/* Mobile hamburger — opens the full menu drawer */}
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                className="nav-mob"
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  background: "linear-gradient(135deg, #F6B49A, #E9987A)",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 3px 12px rgba(233,152,122,0.3)",
+                  cursor: "pointer",
+                  color: "#1F2937",
                   flexShrink: 0,
+                  marginLeft: -8,
                 }}
               >
-                <span
+                {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+
+              {/* Logo mark — peach square with "M" */}
+              <Link href="/" style={{ textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <div
                   style={{
-                    fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif",
-                    fontSize: 18,
-                    fontWeight: 800,
-                    color: "#fff",
-                    lineHeight: 1,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #F6B49A, #E9987A)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 3px 12px rgba(233,152,122,0.3)",
+                    flexShrink: 0,
                   }}
                 >
-                  M
+                  <span
+                    style={{
+                      fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif",
+                      fontSize: 18,
+                      fontWeight: 800,
+                      color: "#fff",
+                      lineHeight: 1,
+                    }}
+                  >
+                    M
+                  </span>
+                </div>
+                <span
+                  className="nav-logo-text"
+                  style={{
+                    fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif",
+                    fontSize: 24,
+                    fontWeight: 700,
+                    fontStyle: "italic",
+                    color: "#1F2937",
+                    letterSpacing: "-0.02em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Mexos Studio
                 </span>
-              </div>
-              <span
-                className="nav-logo-text"
-                style={{
-                  fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif",
-                  fontSize: 24,
-                  fontWeight: 700,
-                  fontStyle: "italic",
-                  color: "#1F2937",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Mexos Studio
-              </span>
-            </Link>
+              </Link>
+            </div>
 
-            {/* Center Navigation - Desktop */}
-            <nav
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}
-              className="hidden lg:flex"
-            >
+            {/* Center Navigation — desktop only */}
+            <nav className="nav-desk" style={{ display: "flex", alignItems: "center", gap: 2 }}>
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
@@ -173,118 +235,41 @@ export default function Navbar() {
               })}
             </nav>
 
-            {/* Right: Icons + CTA */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {/* Icon buttons */}
-              {[
-                { icon: Search, hideOnMobile: false, href: undefined, onClick: () => setSearchOpen(true), badge: 0, label: "Search" },
-                { icon: User, hideOnMobile: true, href: loggedIn ? "/account" : "/login", onClick: undefined, badge: 0, label: "Account" },
-                { icon: Heart, hideOnMobile: true, href: "/wishlist", onClick: undefined, badge: wishlistCount, label: "Wishlist" },
-              ].map(({ icon: Icon, hideOnMobile, href, onClick, badge, label }, i) => {
-                const btn = (
-                  <button
-                    key={i}
-                    onClick={onClick}
-                    aria-label={label}
-                    className={hideOnMobile ? "hidden sm:flex" : "flex"}
-                    style={{
-                      position: "relative",
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
-                      border: "none",
-                      background: "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      color: "#4B5563",
-                      transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#FFF5EB";
-                      e.currentTarget.style.color = "#E9987A";
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color = "#4B5563";
-                      e.currentTarget.style.transform = "translateY(0)";
-                    }}
-                  >
-                    <Icon size={18} strokeWidth={1.5} />
-                    {badge > 0 && (
-                      <span style={{
-                        position: "absolute", top: 3, right: 1, width: 15, height: 15,
-                        backgroundColor: "#E9987A", color: "#fff", fontSize: 8, fontWeight: 700,
-                        borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                        fontFamily: "var(--font-poppins), sans-serif",
-                      }}>
-                        {badge > 9 ? "9+" : badge}
-                      </span>
-                    )}
-                  </button>
-                );
-                if (href) {
-                  return (
-                    <Link key={i} href={href} style={{ textDecoration: "none" }}>
-                      {btn}
-                    </Link>
-                  );
-                }
-                return btn;
-              })}
+            {/* Right: Search · Account · Wishlist(desktop) · Cart · CTA(desktop) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search"
+                style={iconButtonStyle}
+                onMouseEnter={hoverOn}
+                onMouseLeave={hoverOff}
+              >
+                <Search size={18} strokeWidth={1.5} />
+              </button>
 
-              {/* Cart with badge */}
+              <Link href={loggedIn ? "/account" : "/login"} aria-label="Account" style={{ textDecoration: "none" }}>
+                <span style={iconButtonStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+                  <User size={18} strokeWidth={1.5} />
+                </span>
+              </Link>
+
+              <Link href="/wishlist" aria-label="Wishlist" className="nav-desk" style={{ textDecoration: "none" }}>
+                <span style={iconButtonStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
+                  <Heart size={18} strokeWidth={1.5} />
+                  {wishlistCount > 0 && <span style={badgeStyle}>{wishlistCount > 9 ? "9+" : wishlistCount}</span>}
+                </span>
+              </Link>
+
               <Link
                 href="/checkout"
                 aria-label="Cart"
-                style={{
-                  position: "relative",
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#4B5563",
-                  textDecoration: "none",
-                  transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#FFF5EB";
-                  e.currentTarget.style.color = "#E9987A";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#4B5563";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
+                style={{ ...iconButtonStyle, textDecoration: "none" }}
+                onMouseEnter={hoverOn}
+                onMouseLeave={hoverOff}
               >
                 <ShoppingBag size={18} strokeWidth={1.5} />
                 {totalItems > 0 && (
-                  <span
-                    className="cart-badge"
-                    style={{
-                      position: "absolute",
-                      top: 3,
-                      right: 1,
-                      width: 17,
-                      height: 17,
-                      backgroundColor: "#E9987A",
-                      color: "#fff",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-                      boxShadow: "0 2px 8px rgba(233,152,122,0.4)",
-                    }}
-                  >
+                  <span className="cart-badge" style={{ ...badgeStyle, width: 17, height: 17, boxShadow: "0 2px 8px rgba(233,152,122,0.4)" }}>
                     {totalItems > 9 ? "9+" : totalItems}
                   </span>
                 )}
@@ -292,7 +277,7 @@ export default function Navbar() {
 
               {/* Divider - desktop only */}
               <div
-                className="hidden lg:block"
+                className="nav-desk"
                 style={{
                   width: 1,
                   height: 24,
@@ -304,7 +289,7 @@ export default function Navbar() {
               {/* Design Now CTA - desktop */}
               <Link
                 href="/customize"
-                className="nav-cta hidden lg:flex"
+                className="nav-cta nav-desk"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -325,31 +310,63 @@ export default function Navbar() {
                 <Palette size={14} strokeWidth={2} />
                 Design Now
               </Link>
-
-              {/* Mobile hamburger */}
-              <button
-                onClick={() => setMobileOpen(!mobileOpen)}
-                aria-label={mobileOpen ? "Close menu" : "Open menu"}
-                className="lg:hidden"
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  border: "none",
-                  background: "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#1F2937",
-                  marginLeft: 2,
-                  transition: "transform 0.3s ease",
-                }}
-              >
-                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
             </div>
           </div>
+
+          {/* Mobile home-page row: search bar + Design Now (the hero header strip) */}
+          {pathname === "/" && (
+            <div className="nav-mob" style={{ display: "flex", gap: 10, paddingBottom: 12 }}>
+              <button
+                onClick={() => setSearchOpen(true)}
+                aria-label="Search products"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  height: 42,
+                  padding: "0 14px",
+                  borderRadius: 12,
+                  border: "1px solid #F1E5DC",
+                  backgroundColor: "#FFF8F3",
+                  color: "#9CA3AF",
+                  fontSize: 13.5,
+                  cursor: "pointer",
+                  fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+                  textAlign: "left",
+                }}
+              >
+                <Search size={15} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  Search T-shirts, hoodies…
+                </span>
+              </button>
+              <Link
+                href="/customize"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  height: 42,
+                  padding: "0 16px",
+                  backgroundColor: "#E9987A",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 12,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                  fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+                  boxShadow: "0 4px 16px rgba(233,152,122,0.3)",
+                  flexShrink: 0,
+                }}
+              >
+                <Palette size={14} strokeWidth={2} />
+                Design Now
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Bottom border - gradient */}
@@ -367,7 +384,7 @@ export default function Navbar() {
       {/* Mobile Menu Overlay */}
       <div
         onClick={() => setMobileOpen(false)}
-        className="lg:hidden"
+        className="nav-mob"
         style={{
           position: "fixed",
           inset: 0,
@@ -378,19 +395,22 @@ export default function Navbar() {
           transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       />
+
+      {/* Mobile drawer — slides in from the left, under the hamburger */}
       <div
-        className="lg:hidden"
+        className="nav-mob"
         style={{
           position: "fixed",
           top: 0,
-          right: 0,
+          left: 0,
           bottom: 0,
           width: 300,
+          maxWidth: "85vw",
           backgroundColor: "#fff",
           zIndex: 50,
-          boxShadow: mobileOpen ? "-12px 0 40px rgba(0,0,0,0.1)" : "none",
+          boxShadow: mobileOpen ? "12px 0 40px rgba(0,0,0,0.1)" : "none",
           padding: "88px 24px 24px",
-          transform: mobileOpen ? "translateX(0)" : "translateX(100%)",
+          transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s ease",
           display: "flex",
           flexDirection: "column",
@@ -447,7 +467,7 @@ export default function Navbar() {
           </span>
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, overflowY: "auto" }}>
           {navLinks.map((link, i) => {
             const active = isActive(link.href);
             return (
@@ -484,6 +504,54 @@ export default function Navbar() {
               </Link>
             );
           })}
+
+          {/* Quick links: account + wishlist */}
+          <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+            <Link
+              href={loggedIn ? "/account" : "/login"}
+              onClick={() => setMobileOpen(false)}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "11px 0",
+                borderRadius: 12,
+                border: "1px solid #F1E5DC",
+                color: "#4B5563",
+                fontSize: 13,
+                fontWeight: 500,
+                textDecoration: "none",
+                fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+              }}
+            >
+              <User size={15} strokeWidth={1.75} />
+              {loggedIn ? "My Account" : "Login"}
+            </Link>
+            <Link
+              href="/wishlist"
+              onClick={() => setMobileOpen(false)}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "11px 0",
+                borderRadius: 12,
+                border: "1px solid #F1E5DC",
+                color: "#4B5563",
+                fontSize: 13,
+                fontWeight: 500,
+                textDecoration: "none",
+                fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+              }}
+            >
+              <Heart size={15} strokeWidth={1.75} />
+              Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ""}
+            </Link>
+          </div>
         </div>
 
         {/* Mobile CTA */}
@@ -517,6 +585,17 @@ export default function Navbar() {
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       <style jsx global>{`
+        /* Responsive visibility. Inline styles set each element's display, so
+           these rules must win with !important; Tailwind's hidden/lg:* classes
+           can't override inline styles and must not be used here. */
+        @media (min-width: 1024px) {
+          .nav-mob { display: none !important; }
+        }
+        @media (max-width: 1023.98px) {
+          .nav-desk { display: none !important; }
+          .nav-wrap { padding: 0 14px !important; }
+          .nav-row { height: 64px !important; }
+        }
         .nav-link::after {
           content: '';
           position: absolute;
@@ -544,8 +623,8 @@ export default function Navbar() {
           transform: translateY(-1px);
           box-shadow: 0 6px 20px rgba(233,152,122,0.4) !important;
         }
-        @media (max-width: 380px) {
-          .nav-logo-text { font-size: 18px !important; }
+        @media (max-width: 400px) {
+          .nav-logo-text { font-size: 19px !important; }
         }
       `}</style>
     </>
