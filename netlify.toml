@@ -1,0 +1,13 @@
+# Netlify build configuration (overrides UI build settings).
+# The repo is a monorepo: Express API at the root, Next.js storefront in frontend/.
+# Netlify deploys ONLY the storefront — the API must be hosted on a server platform
+# (Render/Railway/Fly), with NEXT_PUBLIC_API_URL pointing at it (set in Netlify UI).
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  # Relative to `base` (netlify.toml paths resolve against the base directory).
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
