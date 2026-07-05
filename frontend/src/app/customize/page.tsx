@@ -607,7 +607,7 @@ export default function CustomizePage() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, marginLeft: "auto" }}>
+            <div className="custom-actions" style={{ display: "flex", gap: 10, marginLeft: "auto" }}>
               {step > 1 && (
                 <button
                   onClick={() => setStep(step - 1)}
@@ -643,7 +643,7 @@ export default function CustomizePage() {
                   Continue <ArrowRight size={15} />
                 </button>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+                <div className="custom-final-col" style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
                   {submittedRef && (
                     <p style={{ fontSize: 13, color: "#10B981", margin: 0, fontFamily: "var(--font-poppins), sans-serif", fontWeight: 600 }}>
                       ✓ Design saved! Reference {submittedRef.slice(0, 8).toUpperCase()} — estimated ₹{estimatedTotal.toLocaleString()}, final quote on WhatsApp. View it in your account&apos;s Saved Designs.
@@ -652,7 +652,7 @@ export default function CustomizePage() {
                   {submitError && (
                     <p style={{ fontSize: 13, color: "#DC2626", margin: 0, fontFamily: "var(--font-poppins), sans-serif" }}>{submitError}</p>
                   )}
-                  <div style={{ display: "flex", gap: 10 }}>
+                  <div className="custom-final-actions" style={{ display: "flex", gap: 10 }}>
                     <button
                       type="button"
                       onClick={() => void orderOnline()}
@@ -709,6 +709,12 @@ export default function CustomizePage() {
           .custom-footer-bar { flex-direction: column; align-items: stretch !important; }
           .custom-step-bar { overflow-x: auto; gap: 4px !important; }
           .custom-step-bar > div { min-width: fit-content; }
+          /* Stack the action buttons full-width, primary actions on top */
+          .custom-actions { margin-left: 0 !important; width: 100%; flex-direction: column-reverse; }
+          .custom-actions .custom-back-btn, .custom-actions .custom-next-btn { width: 100%; justify-content: center; }
+          .custom-final-col { align-items: stretch !important; width: 100%; }
+          .custom-final-actions { flex-direction: column; }
+          .custom-final-actions button { width: 100%; justify-content: center; }
         }
         @media (max-width: 480px) {
           .color-grid { grid-template-columns: repeat(5, 1fr) !important; }
