@@ -173,10 +173,6 @@ export default function HeroOptionA() {
         .hero-btn-primary:hover .hero-btn-arrow { transform: translateX(3px); transition: transform 0.3s ease; }
         .hero-btn-secondary:hover { transform: translateY(-2px); border-color: #E9987A !important; color: #E9987A !important; }
         .hero-trust-badge:hover div:first-child { background-color: rgba(246,180,154,0.15) !important; transform: scale(1.08); }
-        @media (max-width: 1023.98px) {
-          /* The mobile home header adds a search-bar row (64px row + 54px bar). */
-          .hero-section { padding-top: 122px !important; }
-        }
         @media (max-width: 1024px) {
           .hero-grid { grid-template-columns: 1fr !important; text-align: center; gap: 24px !important; min-height: auto !important; padding: 48px 0; }
           .hero-left { display: flex; flex-direction: column; align-items: center; }

@@ -240,6 +240,7 @@ export default function Navbar() {
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search"
+                className="nav-hide-xs"
                 style={iconButtonStyle}
                 onMouseEnter={hoverOn}
                 onMouseLeave={hoverOff}
@@ -247,7 +248,7 @@ export default function Navbar() {
                 <Search size={18} strokeWidth={1.5} />
               </button>
 
-              <Link href={loggedIn ? "/account" : "/login"} aria-label="Account" style={{ textDecoration: "none" }}>
+              <Link href={loggedIn ? "/account" : "/login"} aria-label="Account" className="nav-desk" style={{ textDecoration: "none" }}>
                 <span style={iconButtonStyle} onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
                   <User size={18} strokeWidth={1.5} />
                 </span>
@@ -286,10 +287,10 @@ export default function Navbar() {
                 }}
               />
 
-              {/* Design Now CTA - desktop */}
+              {/* Design Now CTA — top-right on all screen sizes (compact on mobile) */}
               <Link
                 href="/customize"
-                className="nav-cta nav-desk"
+                className="nav-cta"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -313,60 +314,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Mobile home-page row: search bar + Design Now (the hero header strip) */}
-          {pathname === "/" && (
-            <div className="nav-mob" style={{ display: "flex", gap: 10, paddingBottom: 12 }}>
-              <button
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search products"
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  height: 42,
-                  padding: "0 14px",
-                  borderRadius: 12,
-                  border: "1px solid #F1E5DC",
-                  backgroundColor: "#FFF8F3",
-                  color: "#9CA3AF",
-                  fontSize: 13.5,
-                  cursor: "pointer",
-                  fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-                  textAlign: "left",
-                }}
-              >
-                <Search size={15} strokeWidth={1.75} style={{ flexShrink: 0 }} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  Search T-shirts, hoodies…
-                </span>
-              </button>
-              <Link
-                href="/customize"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  height: 42,
-                  padding: "0 16px",
-                  backgroundColor: "#E9987A",
-                  color: "#fff",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  borderRadius: 12,
-                  textDecoration: "none",
-                  whiteSpace: "nowrap",
-                  fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-                  boxShadow: "0 4px 16px rgba(233,152,122,0.3)",
-                  flexShrink: 0,
-                }}
-              >
-                <Palette size={14} strokeWidth={2} />
-                Design Now
-              </Link>
-            </div>
-          )}
         </div>
 
         {/* Bottom border - gradient */}
@@ -505,8 +452,31 @@ export default function Navbar() {
             );
           })}
 
-          {/* Quick links: account + wishlist */}
+          {/* Quick links: search + account + wishlist */}
           <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+            <button
+              type="button"
+              onClick={() => { setMobileOpen(false); setSearchOpen(true); }}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                padding: "11px 0",
+                borderRadius: 12,
+                border: "1px solid #F1E5DC",
+                background: "transparent",
+                color: "#4B5563",
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+                fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+              }}
+            >
+              <Search size={15} strokeWidth={1.75} />
+              Search
+            </button>
             <Link
               href={loggedIn ? "/account" : "/login"}
               onClick={() => setMobileOpen(false)}
@@ -527,7 +497,7 @@ export default function Navbar() {
               }}
             >
               <User size={15} strokeWidth={1.75} />
-              {loggedIn ? "My Account" : "Login"}
+              {loggedIn ? "Account" : "Login"}
             </Link>
             <Link
               href="/wishlist"
@@ -595,6 +565,8 @@ export default function Navbar() {
           .nav-desk { display: none !important; }
           .nav-wrap { padding: 0 14px !important; }
           .nav-row { height: 64px !important; }
+          /* Compact top-right Design Now on mobile */
+          .nav-cta { padding: 8px 12px !important; font-size: 12px !important; gap: 5px !important; }
         }
         .nav-link::after {
           content: '';
@@ -623,8 +595,13 @@ export default function Navbar() {
           transform: translateY(-1px);
           box-shadow: 0 6px 20px rgba(233,152,122,0.4) !important;
         }
-        @media (max-width: 400px) {
-          .nav-logo-text { font-size: 19px !important; }
+        @media (max-width: 430px) {
+          .nav-logo-text { font-size: 17px !important; }
+        }
+        @media (max-width: 385px) {
+          /* Very narrow screens: search moves into the menu drawer */
+          .nav-hide-xs { display: none !important; }
+          .nav-logo-text { font-size: 15px !important; }
         }
       `}</style>
     </>
