@@ -9,14 +9,9 @@ import {
   MessageCircle,
   ShoppingBag,
   Palette,
-  Shirt,
-  Ruler,
-  Layers,
-  Sparkles,
   ArrowRight,
   Check,
   FileImage,
-  Info,
 } from "lucide-react";
 import { WHATSAPP_NUMBER } from "@/lib/utils";
 
@@ -133,6 +128,7 @@ export default function CustomizePage() {
       const print = printTypes.find((p) => p.id === selectedPrint);
       const placement = placements.find((p) => p.id === selectedPlacement);
       const sizeBreakdown = Object.entries(selectedSizes).map(([s, q]) => `${s}:${q}`).join(", ");
+      const descPrefix = designDesc ? `${designDesc}\n` : "";
       const loggedIn = tokenStore.isLoggedIn;
 
       const created = await api.post<{ id: string; guestToken?: string }>(
@@ -147,7 +143,7 @@ export default function CustomizePage() {
           // (DTG/screen/sublimation) is captured in the description.
           printType: selectedPrint === "embroidery" ? "embroidery" : "print",
           designDescription:
-            `${designDesc ? `${designDesc}\n` : ""}Print style: ${print?.label ?? "—"}; Sizes: ${sizeBreakdown}` +
+            `${descPrefix}Print style: ${print?.label ?? "—"}; Sizes: ${sizeBreakdown}` +
             (deadline ? `; Deadline: ${deadline}` : ""),
           ...(deadline ? { deliveryDeadline: new Date(deadline).toISOString() } : {}),
           contactName: contactName.trim(),
@@ -294,15 +290,19 @@ export default function CustomizePage() {
               const done = step > s;
               return (
                 <div key={s} style={{ display: "flex", alignItems: "center" }}>
-                  <div
+                  <button
+                    type="button"
                     onClick={() => (done || active) && setStep(s)}
+                    disabled={!done && !active}
+                    aria-label={`Step ${s}: ${label}`}
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: done || active ? "pointer" : "default",
+                      border: "none", background: "transparent", padding: 0,
                     }}
                   >
                     <div style={{
                       width: 36, height: 36, borderRadius: "50%",
-                      backgroundColor: done ? "#E9987A" : active ? "#E9987A" : "rgba(241,229,220,0.5)",
+                      backgroundColor: done || active ? "#E9987A" : "rgba(241,229,220,0.5)",
                       color: done || active ? "#fff" : "#9CA3AF",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 13, fontWeight: 700, fontFamily: "var(--font-poppins), sans-serif",
@@ -313,7 +313,7 @@ export default function CustomizePage() {
                     <span style={{ fontSize: 10.5, fontWeight: active ? 600 : 400, color: active ? "#E9987A" : "#9CA3AF", fontFamily: "var(--font-poppins), sans-serif", whiteSpace: "nowrap" }}>
                       {label}
                     </span>
-                  </div>
+                  </button>
                   {i < 3 && (
                     <div style={{ width: 48, height: 2, backgroundColor: done ? "#E9987A" : "rgba(241,229,220,0.5)", margin: "0 8px", marginBottom: 20, borderRadius: 1, transition: "background 0.3s" }} />
                   )}
@@ -407,24 +407,32 @@ export default function CustomizePage() {
                   Base Color: <span style={{ fontWeight: 400, color: "#6B7280" }}>{colors[selectedColor]?.name}</span>
                 </p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {colors.map((c, i) => (
+                  {colors.map((c, i) => {
+                    const selected = selectedColor === i;
+                    let swatchBorder = "1.5px solid transparent";
+                    if (selected) swatchBorder = "2.5px solid #E9987A";
+                    else if (c.hex === "#FFFFFF") swatchBorder = "1.5px solid #E5E7EB";
+                    return (
                     <button
-                      key={i}
+                      key={c.name}
+                      type="button"
                       onClick={() => setSelectedColor(i)}
+                      aria-label={`Base color: ${c.name}`}
                       style={{
                         width: 38, height: 38, borderRadius: 10,
-                        background: c.name === "Custom" ? c.hex : c.hex,
-                        border: selectedColor === i ? "2.5px solid #E9987A" : c.hex === "#FFFFFF" ? "1.5px solid #E5E7EB" : "1.5px solid transparent",
+                        background: c.hex,
+                        border: swatchBorder,
                         cursor: "pointer", position: "relative",
-                        boxShadow: selectedColor === i ? "0 0 0 3px rgba(233,152,122,0.2)" : "none",
+                        boxShadow: selected ? "0 0 0 3px rgba(233,152,122,0.2)" : "none",
                         transition: "all 0.25s ease",
                       }}
                     >
-                      {selectedColor === i && c.name !== "Custom" && (
+                      {selected && c.name !== "Custom" && (
                         <Check size={14} color={c.hex === "#FFFFFF" ? "#1F2937" : "#fff"} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)" }} />
                       )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -492,10 +500,11 @@ export default function CustomizePage() {
                 </p>
 
                 {/* Design description */}
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
+                <label htmlFor="custom-design-desc" style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
                   Design Description
                 </label>
                 <textarea
+                  id="custom-design-desc"
                   value={designDesc}
                   onChange={(e) => setDesignDesc(e.target.value)}
                   placeholder="Describe your design idea, text, colors, style references..."
@@ -511,9 +520,9 @@ export default function CustomizePage() {
                 />
 
                 {/* File upload */}
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
                   Upload Design <span style={{ fontWeight: 400, color: "#9CA3AF" }}>(optional)</span>
-                </label>
+                </p>
                 <div
                   style={{
                     padding: "28px 20px", borderRadius: 14,
@@ -527,7 +536,7 @@ export default function CustomizePage() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       <FileImage size={18} color="#E9987A" />
                       <span style={{ fontSize: 13, fontWeight: 500, color: "#1F2937", fontFamily: "var(--font-poppins), sans-serif" }}>{uploadedFile}</span>
-                      <button onClick={() => setUploadedFile(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex" }}>
+                      <button type="button" onClick={() => setUploadedFile(null)} aria-label="Remove uploaded file" style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", display: "flex" }}>
                         <X size={14} />
                       </button>
                     </div>
@@ -548,25 +557,28 @@ export default function CustomizePage() {
                 {/* Contact fields */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }} className="contact-grid">
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>Name</label>
+                    <label htmlFor="custom-contact-name" style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>Name</label>
                     <input
+                      id="custom-contact-name"
                       type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Your name"
                       style={{ ...inputStyle }} className="custom-input"
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>Phone</label>
+                    <label htmlFor="custom-contact-phone" style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>Phone</label>
                     <input
+                      id="custom-contact-phone"
                       type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+91 99999 99999"
                       style={{ ...inputStyle }} className="custom-input"
                     />
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
+                  <label htmlFor="custom-deadline" style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", display: "block", margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
                     Delivery Deadline <span style={{ fontWeight: 400, color: "#9CA3AF" }}>(optional)</span>
                   </label>
                   <input
+                    id="custom-deadline"
                     type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
                     style={{ ...inputStyle }} className="custom-input"
                   />
