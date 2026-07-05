@@ -1,7 +1,6 @@
 import { env } from '../../config/env';
 import { hmacSha256Hex, safeEqualHex } from '../../utils/crypto';
 import { AppError } from '../../utils/app-error';
-import { logger } from '../../utils/logger';
 import { whatsappRepository } from './whatsapp.repository';
 
 interface HandshakeQuery {

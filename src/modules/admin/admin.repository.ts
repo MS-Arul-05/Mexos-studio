@@ -1,7 +1,7 @@
 import { Prisma, type CustomOrder, type Offer, type OrderStatus } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { productInclude, type ProductWithRelations } from '../products/products.repository';
-import { ordersRepository, type OrderWithRelations } from '../orders/orders.repository';
+import type { OrderWithRelations } from '../orders/orders.repository';
 
 export interface ProductImageInput {
   url: string;
