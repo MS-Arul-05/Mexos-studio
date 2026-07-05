@@ -350,6 +350,21 @@ export default function LoginPage() {
           transform: translateY(-2px);
           box-shadow: 0 12px 36px rgba(233,152,122,0.4) !important;
         }
+        @media (max-width: 480px) {
+          .otp-box {
+            width: 40px !important;
+            height: 48px !important;
+            font-size: 18px !important;
+            border-radius: 10px !important;
+          }
+        }
+        @media (max-width: 360px) {
+          .otp-box {
+            width: 36px !important;
+            height: 44px !important;
+            font-size: 16px !important;
+          }
+        }
       `}</style>
     </>
   );

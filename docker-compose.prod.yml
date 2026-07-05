@@ -12,10 +12,10 @@ services:
     environment:
       NODE_ENV: production
       # api talks to postgres over the private compose network, not the host.
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?schema=public&sslmode=disable
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?schema=public&sslmode=require
       # Shared rate limits + notification job queue. Required before running
       # more than one api replica (otherwise limits are per-instance).
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +100,8 @@ services:
         '256mb',
         '--maxmemory-policy',
         'noeviction',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
       ]
     security_opt:
       - no-new-privileges:true
@@ -119,7 +121,7 @@ services:
     image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/tshirt?sslmode=require
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,7 +135,7 @@ services:
     image: oliver006/redis_exporter:v1.62.0
     restart: unless-stopped
     environment:
-      REDIS_ADDR: redis://redis:6379
+      REDIS_ADDR: redis://:${REDIS_PASSWORD}@redis:6379
     depends_on:
       redis:
         condition: service_healthy

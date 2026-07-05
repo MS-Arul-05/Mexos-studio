@@ -112,7 +112,7 @@ export default function BulkOrdersPage() {
               }}>
                 <Package size={13} /> Bulk Orders
               </div>
-              <h1 style={{
+              <h1 className="bulk-hero-heading" style={{
                 fontFamily: "var(--font-playfair), serif", fontSize: 46, fontWeight: 700,
                 color: "#1F2937", margin: "0 0 16px", lineHeight: 1.15,
               }}>
@@ -147,7 +147,7 @@ export default function BulkOrdersPage() {
             </div>
 
             {/* Benefits cards */}
-            <div style={{
+            <div className="bulk-benefits-grid" style={{
               display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14,
               opacity: heroVis ? 1 : 0, transform: heroVis ? "translateY(0)" : "translateY(24px)",
               transition: "all 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s",
@@ -317,6 +317,14 @@ export default function BulkOrdersPage() {
           .bulk-hero-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
           .bulk-form-grid { grid-template-columns: 1fr !important; }
           .bulk-tiers { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .bulk-hero-heading { font-size: 28px !important; }
+          .bulk-hero-grid { gap: 24px !important; }
+          .bulk-benefits-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 480px) {
+          .bulk-hero-heading { font-size: 24px !important; }
         }
       `}</style>
     </>

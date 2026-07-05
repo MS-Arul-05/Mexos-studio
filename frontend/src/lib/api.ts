@@ -9,7 +9,6 @@
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
-const ACCESS_KEY = 'mxs_access';
 const REFRESH_KEY = 'mxs_refresh';
 
 export class ApiError extends Error {
@@ -24,25 +23,32 @@ export class ApiError extends Error {
 
 const isBrowser = globalThis.window !== undefined;
 
+/**
+ * Token store: access token is kept in memory only (not localStorage) to limit
+ * XSS exposure — a stolen refresh token alone requires a round-trip and is
+ * single-use with rotation. Only the refresh token is persisted for tab reload.
+ */
+let _accessToken: string | null = null;
+
 export const tokenStore = {
   get access() {
-    return isBrowser ? localStorage.getItem(ACCESS_KEY) : null;
+    return _accessToken;
   },
   get refresh() {
     return isBrowser ? localStorage.getItem(REFRESH_KEY) : null;
   },
   set(access: string, refresh: string) {
-    localStorage.setItem(ACCESS_KEY, access);
-    localStorage.setItem(REFRESH_KEY, refresh);
+    _accessToken = access;
+    if (isBrowser) localStorage.setItem(REFRESH_KEY, refresh);
     globalThis.dispatchEvent(new Event('mxs-auth-changed'));
   },
   clear() {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    _accessToken = null;
+    if (isBrowser) localStorage.removeItem(REFRESH_KEY);
     globalThis.dispatchEvent(new Event('mxs-auth-changed'));
   },
   get isLoggedIn() {
-    return !!this.access;
+    return !!_accessToken || !!this.refresh;
   },
 };
 
@@ -98,6 +104,11 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+  // If we have a refresh token but no access token (e.g. after page reload),
+  // proactively refresh before making the authenticated request.
+  if (opts.auth && !tokenStore.access && tokenStore.refresh) {
+    await tryRefresh();
+  }
   try {
     return await rawRequest<T>(path, opts);
   } catch (e) {

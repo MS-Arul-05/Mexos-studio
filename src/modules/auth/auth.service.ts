@@ -69,6 +69,8 @@ export const authService = {
     const ttlMs = env.OTP_TTL_MINUTES * 60 * 1000;
     const expiresAt = new Date(Date.now() + ttlMs);
 
+    // Invalidate any previous unverified OTPs so only the latest code is valid.
+    await authRepository.invalidatePreviousOtps(mobileNumber);
     await authRepository.createOtpRequest({ mobileNumber, otpHash, expiresAt });
     await smsProvider.sendOtp(mobileNumber, code);
 

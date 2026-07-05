@@ -179,9 +179,16 @@ export default function HeroOptionA() {
           .hero-heading { font-size: 42px !important; }
         }
         @media (max-width: 640px) {
-          .hero-heading { font-size: 34px !important; }
-          .hero-trust-strip { flex-direction: column !important; gap: 20px !important; }
+          .hero-heading { font-size: 32px !important; }
+          .hero-trust-strip { flex-direction: column !important; gap: 16px !important; padding: 20px 16px !important; }
           .hero-trust-badge { border-left: none !important; padding: 0 !important; }
+        }
+        @media (max-width: 480px) {
+          .hero-heading { font-size: 28px !important; }
+          .hero-grid { padding: 28px 0 !important; }
+          .hero-btn-primary, .hero-btn-secondary { padding: 12px 22px !important; font-size: 13px !important; }
+          .hero-fade-4 { flex-direction: column !important; gap: 10px !important; width: 100%; }
+          .hero-btn-primary, .hero-btn-secondary { width: 100% !important; justify-content: center !important; }
         }
       `}</style>
     </section>

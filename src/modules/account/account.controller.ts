@@ -61,7 +61,9 @@ export const accountController = {
 
   /** GET /custom-orders — the user's saved designs (account page tab). */
   async customOrders(req: Request, res: Response): Promise<void> {
-    const items = await customOrdersRepository.listByUser(req.user!.id);
-    sendSuccess(res, items.map(serializeCustomOrder));
+    const page = Number(req.query.page) || 1;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const { items, total } = await customOrdersRepository.listByUser(req.user!.id, page, limit);
+    sendSuccess(res, items.map(serializeCustomOrder), 200, { page, limit, total });
   },
 };

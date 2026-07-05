@@ -83,7 +83,7 @@ export default function AboutPage() {
             }}>
               <Sparkles size={13} /> Our Story
             </div>
-            <h1 style={{
+            <h1 className="about-hero-heading" style={{
               fontFamily: "var(--font-playfair), serif", fontSize: 52, fontWeight: 700,
               color: "#1F2937", margin: "0 0 20px", lineHeight: 1.15,
             }}>
@@ -219,7 +219,7 @@ export default function AboutPage() {
 
         {/* ── CTA ── */}
         <section ref={ctaRef} style={{ maxWidth: 1200, margin: "0 auto", padding: "0 28px 100px" }}>
-          <div style={{
+          <div className="about-cta-box" style={{
             background: "linear-gradient(135deg, #1F2937 0%, #374151 100%)",
             borderRadius: 28, padding: "64px 48px", textAlign: "center",
             opacity: ctaVis ? 1 : 0, transform: ctaVis ? "translateY(0)" : "translateY(20px)",
@@ -273,10 +273,18 @@ export default function AboutPage() {
         @media (max-width: 768px) {
           .about-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .about-values-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .about-hero-heading { font-size: 36px !important; }
+        }
+        @media (max-width: 640px) {
+          .about-stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .about-values-grid { grid-template-columns: 1fr !important; }
+          .about-hero-heading { font-size: 30px !important; }
+          .about-cta-box { padding: 36px 20px !important; border-radius: 20px !important; }
+          .about-cta-box h2 { font-size: 24px !important; }
         }
         @media (max-width: 480px) {
           .about-stats-grid { grid-template-columns: 1fr !important; }
-          .about-values-grid { grid-template-columns: 1fr !important; }
+          .about-hero-heading { font-size: 26px !important; }
         }
       `}</style>
     </>

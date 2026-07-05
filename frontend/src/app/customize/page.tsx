@@ -18,6 +18,7 @@ import {
   FileImage,
   Info,
 } from "lucide-react";
+import { WHATSAPP_NUMBER } from "@/lib/utils";
 
 const shirtTypes = [
   { id: "round-neck", label: "Round Neck Tee", price: 499, icon: "👕" },
@@ -180,16 +181,21 @@ export default function CustomizePage() {
     }
   };
 
+  const [showSuccess, setShowSuccess] = useState(false);
+
   const orderOnline = async () => {
     const id = await createCustomOrder();
-    if (id) window.scrollTo({ top: 0, behavior: "smooth" });
+    if (id) {
+      setShowSuccess(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const orderViaWhatsApp = async () => {
     const id = await createCustomOrder();
     // Open WhatsApp with the full brief either way; include the reference when saved.
     const ref = id ? `\nReference: ${id.slice(0, 8).toUpperCase()}` : "";
-    window.open(`https://wa.me/919999999999?text=${buildWhatsAppMsg()}${encodeURIComponent(ref)}`, "_blank");
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${buildWhatsAppMsg()}${encodeURIComponent(ref)}`, "_blank");
   };
 
   const buildWhatsAppMsg = () => {
@@ -229,6 +235,26 @@ export default function CustomizePage() {
     <>
       <Navbar />
       <main ref={sectionRef} style={{ backgroundColor: "#FFF8F3", paddingTop: 72, minHeight: "100vh" }}>
+        {showSuccess && (
+          <div style={{
+            maxWidth: 860, margin: "0 auto", padding: "48px 28px 0",
+            textAlign: "center",
+          }}>
+            <div style={{
+              backgroundColor: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 16,
+              padding: "32px 24px", marginBottom: 32,
+            }}>
+              <Check size={40} color="#10B981" style={{ marginBottom: 12 }} />
+              <h2 style={{ fontFamily: "var(--font-playfair), serif", fontSize: 24, fontWeight: 700, color: "#065F46", margin: "0 0 8px" }}>
+                Order Submitted!
+              </h2>
+              <p style={{ fontSize: 14, color: "#047857", margin: 0, fontFamily: "var(--font-poppins), sans-serif" }}>
+                Your custom design order has been received. We&apos;ll reach out via WhatsApp shortly with a quote.
+                {submittedRef && <><br />Reference: <strong>{submittedRef.slice(0, 8).toUpperCase()}</strong></>}
+              </p>
+            </div>
+          </div>
+        )}
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "48px 28px 100px" }}>
           {/* Header */}
           <div style={{
@@ -242,7 +268,7 @@ export default function CustomizePage() {
                 Custom Studio
               </span>
             </div>
-            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: "0 0 10px" }}>
+            <h1 className="custom-heading" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: "0 0 10px" }}>
               Design Your Own
             </h1>
             <p style={{ fontSize: 15, color: "#6B7280", fontFamily: "var(--font-poppins), sans-serif", maxWidth: 480, margin: "0 auto" }}>
@@ -663,6 +689,12 @@ export default function CustomizePage() {
           .print-grid { grid-template-columns: 1fr !important; }
           .contact-grid { grid-template-columns: 1fr !important; }
           .custom-footer-bar { flex-direction: column; align-items: stretch !important; }
+          .custom-step-bar { overflow-x: auto; gap: 4px !important; }
+          .custom-step-bar > div { min-width: fit-content; }
+        }
+        @media (max-width: 480px) {
+          .color-grid { grid-template-columns: repeat(5, 1fr) !important; }
+          .custom-heading { font-size: 24px !important; }
         }
       `}</style>
     </>

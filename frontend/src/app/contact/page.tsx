@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/sections/Footer";
 import { api } from "@/lib/api";
+import { WHATSAPP_NUMBER } from "@/lib/utils";
 import {
   MessageCircle,
   Mail,
@@ -100,7 +101,7 @@ export default function ContactPage() {
             <p style={{ fontSize: 12, fontWeight: 600, color: "#E9987A", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
               Get in Touch
             </p>
-            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: "0 0 12px" }}>
+            <h1 className="contact-hero-heading" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: "0 0 12px" }}>
               Contact Us
             </h1>
             <p style={{ fontSize: 15, color: "#6B7280", maxWidth: 520, margin: "0 auto", fontFamily: "var(--font-poppins), sans-serif" }}>
@@ -142,7 +143,7 @@ export default function ContactPage() {
             </div>
 
             <a
-              href="https://wa.me/919988776655?text=Hi!%20I%20have%20a%20question%20about%20Mexos%20Studio."
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi!%20I%20have%20a%20question%20about%20Mexos%20Studio.`}
               target="_blank"
               rel="noopener noreferrer"
               className="wa-bar-btn"
@@ -170,7 +171,7 @@ export default function ContactPage() {
             className="contact-grid"
           >
             {/* ── Contact Form ── */}
-            <div style={{
+            <div className="contact-form-card" style={{
               backgroundColor: "#fff", borderRadius: 22, border: "1px solid rgba(241,229,220,0.5)",
               padding: "36px 32px",
             }}>
@@ -374,6 +375,14 @@ export default function ContactPage() {
           .contact-grid { grid-template-columns: 1fr !important; }
           .contact-whatsapp-bar { flex-direction: column !important; gap: 16px !important; text-align: center; }
           .form-row { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .contact-grid { gap: 24px !important; }
+          .contact-form-card { padding: 24px 20px !important; }
+          .contact-hero-heading { font-size: 28px !important; }
+        }
+        @media (max-width: 480px) {
+          .contact-hero-heading { font-size: 24px !important; }
         }
       `}</style>
     </>

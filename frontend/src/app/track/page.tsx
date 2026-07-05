@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { api, toE164, ApiError } from "@/lib/api";
+import { WHATSAPP_NUMBER } from "@/lib/utils";
 
 /* ── tracking view model (built from GET /orders/track) ── */
 interface TrackingData {
@@ -147,7 +148,7 @@ export default function TrackPage() {
             <p style={{ fontSize: 12, fontWeight: 600, color: "#E9987A", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
               Order Status
             </p>
-            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 36, fontWeight: 700, color: "#1F2937", margin: 0 }}>
+            <h1 className="track-heading" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 36, fontWeight: 700, color: "#1F2937", margin: 0 }}>
               Track Your Order
             </h1>
           </div>
@@ -284,7 +285,7 @@ export default function TrackPage() {
                   </div>
                 </div>
 
-                <div style={{ position: "relative", paddingLeft: 32 }}>
+                <div className="track-timeline" style={{ position: "relative", paddingLeft: 32 }}>
                   {/* Vertical line */}
                   <div style={{
                     position: "absolute", left: 15, top: 8, bottom: 8,
@@ -369,7 +370,7 @@ export default function TrackPage() {
               {/* Actions */}
               <div style={{ display: "flex", gap: 12 }} className="track-actions">
                 <a
-                  href="https://wa.me/919999999999?text=Hi!%20I%20need%20help%20with%20my%20order"
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi!%20I%20need%20help%20with%20my%20order`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="track-whatsapp"
@@ -416,6 +417,12 @@ export default function TrackPage() {
         @media (max-width: 640px) {
           .track-inputs { grid-template-columns: 1fr !important; }
           .track-actions { flex-direction: column; }
+          .track-heading { font-size: 28px !important; }
+          .track-timeline { padding-left: 24px !important; }
+        }
+        @media (max-width: 480px) {
+          .track-heading { font-size: 24px !important; }
+          .track-timeline { padding-left: 20px !important; }
         }
       `}</style>
     </>

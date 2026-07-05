@@ -153,10 +153,13 @@ export default function FeaturedProducts() {
           className="products-grid"
         >
           {products.map((product, i) => (
-            <div
-              key={product.name}
+            <Link
+              key={product.slug}
+              href={`/shop/${product.slug}`}
               className="product-card"
               style={{
+                display: "block",
+                textDecoration: "none",
                 cursor: "pointer",
                 opacity: visible ? 1 : 0,
                 transform: visible ? "translateY(0)" : "translateY(28px)",
@@ -208,6 +211,7 @@ export default function FeaturedProducts() {
 
                   {/* Wishlist button */}
                   <button
+                    aria-label="Add to wishlist"
                     className="product-wishlist"
                     style={{
                       position: "absolute",
@@ -262,6 +266,7 @@ export default function FeaturedProducts() {
                     }}
                   >
                     <button
+                      aria-label={`Add ${product.name} to cart`}
                       style={{
                         flex: 1,
                         display: "inline-flex",
@@ -284,6 +289,7 @@ export default function FeaturedProducts() {
                       <ShoppingBag size={13} /> Add to Cart
                     </button>
                     <button
+                      aria-label={`Quick view ${product.name}`}
                       style={{
                         width: 40,
                         height: 40,
@@ -378,7 +384,7 @@ export default function FeaturedProducts() {
                   </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

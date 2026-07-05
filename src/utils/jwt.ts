@@ -59,3 +59,41 @@ export function verifyGuestOrderToken(token: string): GuestOrderTokenPayload | n
     return null;
   }
 }
+
+// ── Guest Custom Order Tokens ──
+
+const GUEST_CUSTOM_ORDER_SCOPE = 'guest-custom-order';
+
+export interface GuestCustomOrderTokenPayload {
+  customOrderId: string;
+  scope: typeof GUEST_CUSTOM_ORDER_SCOPE;
+}
+
+/**
+ * Signed token for guests accessing their custom order (same pattern as guest
+ * order tokens). Prevents IDOR by requiring possession of a signed capability.
+ */
+export function signGuestCustomOrderToken(customOrderId: string): string {
+  return jwt.sign(
+    { customOrderId, scope: GUEST_CUSTOM_ORDER_SCOPE },
+    env.JWT_GUEST_SECRET,
+    { expiresIn: parseDurationSeconds(env.JWT_GUEST_TTL) },
+  );
+}
+
+/** Verify a guest-custom-order token. Returns null on any failure (non-throwing). */
+export function verifyGuestCustomOrderToken(token: string): GuestCustomOrderTokenPayload | null {
+  try {
+    const decoded = jwt.verify(token, env.JWT_GUEST_SECRET);
+    if (
+      typeof decoded === 'string' ||
+      decoded.scope !== GUEST_CUSTOM_ORDER_SCOPE ||
+      !decoded.customOrderId
+    ) {
+      return null;
+    }
+    return { customOrderId: String(decoded.customOrderId), scope: GUEST_CUSTOM_ORDER_SCOPE };
+  } catch {
+    return null;
+  }
+}

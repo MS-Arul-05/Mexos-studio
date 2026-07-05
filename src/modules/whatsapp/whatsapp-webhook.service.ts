@@ -37,17 +37,19 @@ export const whatsappWebhookService = {
     signature: string | undefined,
     parsedBody: unknown,
   ): Promise<{ logged: number }> {
-    if (env.WHATSAPP_APP_SECRET) {
-      const expected = `sha256=${hmacSha256Hex(rawBody, env.WHATSAPP_APP_SECRET)}`;
-      const provided = signature ?? '';
-      const ok =
-        provided.startsWith('sha256=') &&
-        safeEqualHex(expected.slice('sha256='.length), provided.slice('sha256='.length));
-      if (!ok) {
-        throw AppError.unauthorized('Invalid webhook signature', 'INVALID_SIGNATURE');
-      }
-    } else {
-      logger.warn('WHATSAPP_APP_SECRET not set — skipping inbound webhook signature verification');
+    if (!env.WHATSAPP_APP_SECRET) {
+      throw AppError.internal(
+        'WHATSAPP_APP_SECRET not configured — cannot verify webhook signature',
+        'WEBHOOK_SECRET_MISSING',
+      );
+    }
+    const expected = `sha256=${hmacSha256Hex(rawBody, env.WHATSAPP_APP_SECRET)}`;
+    const provided = signature ?? '';
+    const ok =
+      provided.startsWith('sha256=') &&
+      safeEqualHex(expected.slice('sha256='.length), provided.slice('sha256='.length));
+    if (!ok) {
+      throw AppError.unauthorized('Invalid webhook signature', 'INVALID_SIGNATURE');
     }
 
     const body = (parsedBody ?? {}) as {

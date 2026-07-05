@@ -49,3 +49,20 @@ body {
 ::-webkit-scrollbar-thumb { background: #F6B49A; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #E9987A; }
 ::selection { background: #FACBB5; color: #1F2937; }
+
+/* ── Global Responsive Utilities ── */
+
+/* Ensure touch targets and text are comfortably sized on mobile */
+@media (max-width: 640px) {
+  /* Reduce excessive bottom padding on pages */
+  main {
+    padding-bottom: 40px;
+  }
+}
+
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 480px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}

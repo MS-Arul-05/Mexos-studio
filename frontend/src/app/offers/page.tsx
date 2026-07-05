@@ -17,8 +17,8 @@ import {
   Check,
 } from "lucide-react";
 
-/* ── countdown helper ── */
-function useCountdown(targetDate: Date) {
+/* ── Isolated countdown component — only re-renders itself, not the whole page ── */
+function CountdownDisplay({ targetDate }: { targetDate: Date }) {
   const [left, setLeft] = useState({ d: 0, h: 0, m: 0, s: 0 });
   useEffect(() => {
     const tick = () => {
@@ -34,7 +34,33 @@ function useCountdown(targetDate: Date) {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [targetDate]);
-  return left;
+
+  const units = [
+    { label: "Days", value: left.d },
+    { label: "Hours", value: left.h },
+    { label: "Mins", value: left.m },
+    { label: "Secs", value: left.s },
+  ];
+
+  return (
+    <div style={{ display: "flex", gap: 12 }}>
+      {units.map((u) => (
+        <div key={u.label} style={{ textAlign: "center" }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14,
+            backgroundColor: "rgba(233,152,122,0.08)", border: "1px solid rgba(233,152,122,0.15)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 22, fontWeight: 800, color: "#E9987A", fontFamily: "var(--font-poppins), sans-serif",
+          }}>
+            {String(u.value).padStart(2, "0")}
+          </div>
+          <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 500, fontFamily: "var(--font-poppins), sans-serif", marginTop: 4, display: "block" }}>
+            {u.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /* ── data ── */
@@ -103,7 +129,6 @@ const offers = [
 
 /* ── component ── */
 export default function OffersPage() {
-  const cd = useCountdown(heroOffer.validUntil);
   const heroRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [heroVis, setHeroVis] = useState(false);
@@ -398,57 +423,7 @@ export default function OffersPage() {
                 </span>
               </div>
 
-              <div style={{ display: "flex", gap: 10 }}>
-                {[
-                  { val: cd.d, label: "Days" },
-                  { val: cd.h, label: "Hours" },
-                  { val: cd.m, label: "Mins" },
-                  { val: cd.s, label: "Secs" },
-                ].map((u) => (
-                  <div
-                    key={u.label}
-                    style={{
-                      width: 72,
-                      height: 84,
-                      borderRadius: 16,
-                      backgroundColor: "rgba(255,255,255,0.18)",
-                      backdropFilter: "blur(12px)",
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 4,
-                    }}
-                    className="countdown-block"
-                  >
-                    <span
-                      style={{
-                        fontSize: 30,
-                        fontWeight: 800,
-                        color: "#fff",
-                        lineHeight: 1,
-                        fontFamily:
-                          "var(--font-playfair), 'Playfair Display', serif",
-                      }}
-                    >
-                      {String(u.val).padStart(2, "0")}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 600,
-                        color: "rgba(255,255,255,0.6)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        fontFamily: "var(--font-poppins), sans-serif",
-                      }}
-                    >
-                      {u.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <CountdownDisplay targetDate={heroOffer.validUntil} />
             </div>
           </div>
         </section>
@@ -736,6 +711,15 @@ export default function OffersPage() {
           }
           .offer-hero-heading { font-size: 34px !important; }
           .offer-hero-highlight { font-size: 42px !important; }
+        }
+        @media (max-width: 640px) {
+          .offer-hero-heading { font-size: 28px !important; }
+          .offer-hero-highlight { font-size: 34px !important; }
+          .countdown-block { min-width: 48px !important; padding: 10px 8px !important; }
+        }
+        @media (max-width: 480px) {
+          .offer-hero-heading { font-size: 24px !important; }
+          .offer-hero-highlight { font-size: 28px !important; }
         }
       `}</style>
     </>

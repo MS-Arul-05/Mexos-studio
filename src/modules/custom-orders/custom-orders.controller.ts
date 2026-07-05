@@ -2,6 +2,10 @@ import type { Request, Response } from 'express';
 import { customOrdersService, type Requester } from './custom-orders.service';
 import { analyticsService } from '../../analytics/analytics.service';
 import { sendSuccess } from '../../utils/response';
+import {
+  signGuestCustomOrderToken,
+  verifyGuestCustomOrderToken,
+} from '../../utils/jwt';
 import type {
   AttachFileInput,
   CreateCustomOrderInput,
@@ -9,15 +13,31 @@ import type {
   UploadUrlInput,
 } from './custom-orders.schemas';
 
-const requesterOf = (req: Request): Requester => ({ userId: req.user?.id });
+/** Read an optional guest-custom-order token from header or query. */
+function guestCustomOrderIdOf(req: Request): string | undefined {
+  const raw = (
+    req.header('x-guest-custom-order-token') ??
+    (req.query.guestCustomOrderToken as string | undefined)
+  )?.trim();
+  if (!raw) return undefined;
+  return verifyGuestCustomOrderToken(raw)?.customOrderId;
+}
+
+const requesterOf = (req: Request): Requester => ({
+  userId: req.user?.id,
+  guestCustomOrderId: guestCustomOrderIdOf(req),
+});
 
 export const customOrdersController = {
   async create(req: Request, res: Response): Promise<void> {
+    const requester = requesterOf(req);
     const order = await customOrdersService.create(
       req.body as CreateCustomOrderInput,
-      requesterOf(req),
+      requester,
     );
-    sendSuccess(res, order, 201);
+    // Return a signed capability token for guests so they can access their order.
+    const guestToken = requester.userId ? undefined : signGuestCustomOrderToken(order.id);
+    sendSuccess(res, { ...order, guestToken }, 201);
   },
 
   async getById(req: Request, res: Response): Promise<void> {

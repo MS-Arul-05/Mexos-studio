@@ -80,12 +80,14 @@ export const adminService = {
     if (!existing) throw AppError.notFound('Offer not found', 'OFFER_NOT_FOUND');
     const data: Prisma.OfferUpdateInput = {
       ...(input.title != null ? { title: input.title } : {}),
-      ...(input.description != null ? { description: input.description } : {}),
-      ...(input.bannerImageUrl != null ? { bannerImageUrl: input.bannerImageUrl } : {}),
-      ...(input.couponCode != null ? { couponCode: input.couponCode } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      ...(input.bannerImageUrl !== undefined ? { bannerImageUrl: input.bannerImageUrl } : {}),
+      ...(input.couponCode !== undefined ? { couponCode: input.couponCode } : {}),
       ...(input.discountType != null ? { discountType: input.discountType } : {}),
       ...(input.discountValue != null ? { discountValue: dec(input.discountValue) } : {}),
-      ...(input.minOrderValue != null ? { minOrderValue: dec(input.minOrderValue) } : {}),
+      ...(input.minOrderValue !== undefined
+        ? { minOrderValue: input.minOrderValue != null ? dec(input.minOrderValue) : null }
+        : {}),
       ...(input.startsAt != null ? { startsAt: input.startsAt } : {}),
       ...(input.endsAt != null ? { endsAt: input.endsAt } : {}),
       ...(input.isActive != null ? { isActive: input.isActive } : {}),
@@ -106,35 +108,37 @@ export const adminService = {
     input: UpdateOrderStatusInput,
     changedBy: string,
   ): Promise<SerializedOrder> {
-    const order = await ordersRepository.findById(id);
-    if (!order) throw AppError.notFound('Order not found', 'ORDER_NOT_FOUND');
-    if (TERMINAL.includes(order.status)) {
-      throw AppError.conflict(
-        `Order is in a terminal state (${order.status}) and cannot be changed`,
-        'ORDER_TERMINAL',
-      );
-    }
-
     // Cancelling an order that still holds a reservation → return the units to
     // stock BEFORE flipping the status (releaseOnCancel is idempotent + guarded).
     if (input.status === 'CANCELLED') {
       await paymentsRepository.releaseOnCancel(id);
     }
 
+    // Atomic terminal-state guard inside the transaction (TOCTOU-safe).
     const updated = await adminRepository.setOrderStatus(
       id,
       input.status as OrderStatus,
       input.note,
       changedBy,
+      TERMINAL,
     );
-    if (!updated) throw AppError.notFound('Order not found', 'ORDER_NOT_FOUND');
+    if (!updated) {
+      // Could be not-found OR already terminal — check to give the right error.
+      const existing = await ordersRepository.findById(id);
+      if (!existing) throw AppError.notFound('Order not found', 'ORDER_NOT_FOUND');
+      throw AppError.conflict(
+        `Order is in a terminal state (${existing.status}) and cannot be changed`,
+        'ORDER_TERMINAL',
+      );
+    }
 
     // Fire the notification hook (Epic 4.3) — best-effort, never fails the admin action.
+    const toNumber = updated.guestMobile ?? (updated as any).user?.mobileNumber ?? null;
     try {
       await notificationDispatcher.sendOrderStatusUpdate({
         orderId: updated.id,
         status: updated.status,
-        toNumber: updated.guestMobile,
+        toNumber,
         note: input.note,
       });
     } catch (err) {

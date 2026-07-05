@@ -74,15 +74,40 @@ export function findVariantId(product: ApiProduct, color: string, size: string):
   return product.variants.find((v) => v.color === color && v.size === size)?.id ?? null;
 }
 
+// Module-level cache to deduplicate concurrent and repeated product fetches.
+let _productsCache: ApiProduct[] | null = null;
+let _productsFetchPromise: Promise<ApiProduct[]> | null = null;
+
+function fetchProducts(): Promise<ApiProduct[]> {
+  if (_productsCache) return Promise.resolve(_productsCache);
+  if (_productsFetchPromise) return _productsFetchPromise;
+  _productsFetchPromise = api
+    .get<BackendProduct[]>('/products?limit=100')
+    .then((items) => {
+      _productsCache = items.map(mapProduct);
+      _productsFetchPromise = null;
+      return _productsCache;
+    })
+    .catch((e) => {
+      _productsFetchPromise = null;
+      throw e;
+    });
+  return _productsFetchPromise;
+}
+
 export function useProducts() {
-  const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<ApiProduct[]>(_productsCache ?? []);
+  const [loading, setLoading] = useState(!_productsCache);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api
-      .get<BackendProduct[]>('/products?limit=100')
-      .then((items) => setProducts(items.map(mapProduct)))
+    if (_productsCache) {
+      setProducts(_productsCache);
+      setLoading(false);
+      return;
+    }
+    fetchProducts()
+      .then((items) => setProducts(items))
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load products'))
       .finally(() => setLoading(false));
   }, []);
@@ -96,7 +121,14 @@ export function useProduct(slug: string | null) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+    // Reset state on slug change to avoid showing stale product.
+    setProduct(null);
+    setLoading(true);
+    setError('');
     api
       .get<BackendProduct>(`/products/${slug}`)
       .then((p) => setProduct(mapProduct(p)))
@@ -107,26 +139,3 @@ export function useProduct(slug: string | null) {
   return { product, loading, error };
 }
 
-export interface BackendOffer {
-  id: string;
-  title: string;
-  description: string | null;
-  couponCode: string | null;
-  discountType: 'PERCENTAGE' | 'FLAT';
-  discountValue: string;
-  minOrderValue: string | null;
-  endsAt: string;
-}
-
-export function useOffers() {
-  const [offers, setOffers] = useState<BackendOffer[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    api
-      .get<BackendOffer[]>('/offers')
-      .then(setOffers)
-      .catch(() => setOffers([]))
-      .finally(() => setLoading(false));
-  }, []);
-  return { offers, loading };
-}

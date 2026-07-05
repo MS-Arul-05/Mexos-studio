@@ -17,6 +17,8 @@ const UPLOAD_URL_TTL_SECONDS = 15 * 60;
 
 export interface Requester {
   userId?: string;
+  /** Verified guest custom order ID from a signed capability token. */
+  guestCustomOrderId?: string;
 }
 
 export function serializeCustomOrder(o: CustomOrder) {
@@ -54,11 +56,19 @@ async function getOrThrow(id: string): Promise<CustomOrder> {
 
 /**
  * Ownership check: user-owned orders require the same authenticated user; guest
- * orders (userId null) are accessible to anyone holding the id (capability-based).
+ * orders (userId null) require possession of a signed capability token.
  */
 function assertOwnership(order: CustomOrder, requester: Requester): void {
-  if (order.userId && order.userId !== requester.userId) {
-    throw AppError.forbidden('You do not have access to this custom order');
+  if (order.userId) {
+    // User-owned: must be the same authenticated user.
+    if (order.userId !== requester.userId) {
+      throw AppError.forbidden('You do not have access to this custom order');
+    }
+  } else {
+    // Guest order: require a valid signed token scoped to this order ID.
+    if (requester.guestCustomOrderId !== order.id) {
+      throw AppError.notFound('Custom order not found', 'CUSTOM_ORDER_NOT_FOUND');
+    }
   }
 }
 
@@ -186,7 +196,13 @@ export const customOrdersService = {
       throw AppError.badRequest('Uploaded file was rejected by malware scanning', 'FILE_REJECTED');
     }
 
-    const updated = await customOrdersRepository.update(id, { uploadedFileUrl: fileUrl });
+    const updated = await customOrdersRepository.updateIfDraft(id, { uploadedFileUrl: fileUrl });
+    if (!updated) {
+      throw AppError.conflict(
+        'Custom order can no longer be edited (status changed concurrently)',
+        'CUSTOM_ORDER_NOT_EDITABLE',
+      );
+    }
     return serializeCustomOrder(updated);
   },
 

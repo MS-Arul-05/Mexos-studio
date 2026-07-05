@@ -9,6 +9,12 @@ import { AppError } from '../../utils/app-error';
 import { logger } from '../../utils/logger';
 import { recordAudit } from '../../utils/audit';
 import { paymentsTotal } from '../../observability/metrics';
+import type { PaymentWithOrderItems } from './payments.repository';
+
+/** Resolve the notification phone number from a payment's order (guest or user). */
+function resolveNotificationNumber(payment: PaymentWithOrderItems): string | null {
+  return payment.order.guestMobile ?? payment.order.user?.mobileNumber ?? null;
+}
 
 export interface PaymentRequester {
   userId?: string;
@@ -159,7 +165,7 @@ export const paymentsService = {
       await notificationDispatcher.sendOrderStatusUpdate({
         orderId: payment.orderId,
         status: 'CONFIRMED',
-        toNumber: payment.order.guestMobile,
+        toNumber: resolveNotificationNumber(payment),
       });
       // Purchase event (Epic 6.5) — deterministic eventId (purchase_<orderId>) so the
       // client thank-you-page Pixel dedupes without a round-trip. Fire-and-forget.
@@ -175,7 +181,7 @@ export const paymentsService = {
           const invoice = await generateAndStoreInvoice(payment.order);
           await notificationDispatcher.sendInvoice({
             orderId: payment.orderId,
-            toNumber: payment.order.guestMobile,
+            toNumber: resolveNotificationNumber(payment),
             documentUrl: invoice.fileUrl,
             fileName: invoice.fileName,
           });
@@ -196,7 +202,7 @@ export const paymentsService = {
       await notificationDispatcher.sendOrderStatusUpdate({
         orderId: payment.orderId,
         status: 'PAYMENT_FAILED',
-        toNumber: payment.order.guestMobile,
+        toNumber: resolveNotificationNumber(payment),
       });
     }
 

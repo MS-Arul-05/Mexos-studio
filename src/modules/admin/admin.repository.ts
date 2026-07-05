@@ -86,20 +86,40 @@ export const adminRepository = {
   },
 
   // ── Orders ──
-  /** Manual status transition: update status + append history atomically. */
+  /**
+   * Manual status transition: atomically guard against terminal states and
+   * concurrent updates (TOCTOU-safe), then update status + append history.
+   * Returns null if the order doesn't exist or is already terminal.
+   */
   async setOrderStatus(
     id: string,
     status: OrderStatus,
     note: string | undefined,
     changedBy: string,
+    terminalStates: OrderStatus[],
   ): Promise<OrderWithRelations | null> {
-    await prisma.$transaction([
-      prisma.order.update({ where: { id }, data: { status } }),
-      prisma.orderStatusHistory.create({
+    return prisma.$transaction(async (tx) => {
+      // Conditional update — only moves if NOT in a terminal state (TOCTOU-safe).
+      const moved = await tx.order.updateMany({
+        where: { id, status: { notIn: terminalStates } },
+        data: { status },
+      });
+      if (moved.count === 0) return null;
+      await tx.orderStatusHistory.create({
         data: { orderId: id, status, note: note ?? null, changedBy },
-      }),
-    ]);
-    return ordersRepository.findById(id);
+      });
+      // Return the updated order within the same transaction.
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          statusHistory: { orderBy: { createdAt: 'asc' } },
+          payment: true,
+          user: { select: { mobileNumber: true } },
+        },
+      });
+      return order as OrderWithRelations & { user?: { mobileNumber: string } | null };
+    });
   },
 
   // ── Custom orders queue ──

@@ -35,5 +35,7 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||4000)+'/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-# Apply migrations then boot (fail-fast production config check runs on start).
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Migration should be run as a separate init job/container before deployment.
+# Use: docker run --rm <image> npx prisma migrate deploy
+# The app container only starts the server.
+CMD ["node", "dist/server.js"]

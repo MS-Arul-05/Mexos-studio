@@ -3,6 +3,7 @@ import { authController } from './auth.controller';
 import { validate } from '../../middleware/validate';
 import { asyncHandler } from '../../utils/async-handler';
 import { authGuard } from '../../middleware/auth-guard';
+import { optionalAuth } from '../../middleware/optional-auth';
 import { otpSendIpLimiter, otpVerifyIpLimiter } from '../../middleware/rate-limit';
 import { sendOtpSchema, verifyOtpSchema, refreshSchema, logoutSchema } from './auth.schemas';
 
@@ -29,7 +30,7 @@ router.post(
 router.post('/refresh', validate({ body: refreshSchema }), asyncHandler(authController.refresh));
 
 // POST /api/auth/logout — revoke refresh token (Epic 3.3)
-router.post('/logout', validate({ body: logoutSchema }), asyncHandler(authController.logout));
+router.post('/logout', optionalAuth, validate({ body: logoutSchema }), asyncHandler(authController.logout));
 
 // POST /api/auth/logout-all — revoke all sessions for the authenticated user
 router.post('/logout-all', authGuard, asyncHandler(authController.logoutAll));

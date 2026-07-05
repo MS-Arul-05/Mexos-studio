@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/sections/Footer";
 import {
@@ -34,13 +34,22 @@ const sortOptions = [
 ];
 
 export default function ShopPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", backgroundColor: "#FFF8F3" }} />}>
+      <ShopPageContent />
+    </Suspense>
+  );
+}
+
+function ShopPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlCategory = searchParams.get("category");
   const urlQuery = searchParams.get("q");
   const wishlist = useWishlistStore();
   const addItem = useCartStore((s) => s.addItem);
   const toast = useToast();
-  const { products: allProducts, loading } = useProducts();
+  const { products: allProducts, loading, error: catalogError } = useProducts();
 
   const [search, setSearch] = useState(urlQuery || "");
   const [activeCategory, setActiveCategory] = useState(() => {
@@ -108,7 +117,7 @@ export default function ShopPage() {
             <p style={{ fontSize: 12, fontWeight: 600, color: "#E9987A", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
               Our Collection
             </p>
-            <h1 style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: 0 }}>
+            <h1 className="shop-heading" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: 0 }}>
               Product Showcase
             </h1>
           </div>
@@ -183,6 +192,9 @@ export default function ShopPage() {
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowSort(!showSort)}
+                aria-haspopup="listbox"
+                aria-expanded={showSort}
+                aria-label="Sort products"
                 className="sort-btn"
                 style={{
                   display: "inline-flex",
@@ -207,6 +219,8 @@ export default function ShopPage() {
               </button>
               {showSort && (
                 <div
+                  role="listbox"
+                  aria-label="Sort options"
                   style={{
                     position: "absolute",
                     top: "calc(100% + 8px)",
@@ -223,6 +237,8 @@ export default function ShopPage() {
                   {sortOptions.map((s) => (
                     <button
                       key={s.key}
+                      role="option"
+                      aria-selected={sortBy === s.key}
                       onClick={() => { setSortBy(s.key); setShowSort(false); }}
                       style={{
                         display: "block",
@@ -293,7 +309,13 @@ export default function ShopPage() {
           ref={gridRef}
           style={{ padding: "0 28px 100px", maxWidth: 1200, margin: "0 auto" }}
         >
-          {filtered.length === 0 ? (
+          {catalogError ? (
+            <div style={{ textAlign: "center", padding: "80px 0" }}>
+              <p style={{ fontSize: 16, color: "#E9987A", fontFamily: "var(--font-poppins), sans-serif" }}>
+                Unable to load products. Please try again later.
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "80px 0" }}>
               <p style={{ fontSize: 16, color: "#9CA3AF", fontFamily: "var(--font-poppins), sans-serif" }}>
                 No products found. Try a different search or category.
@@ -310,7 +332,7 @@ export default function ShopPage() {
                     textDecoration: "none",
                     opacity: gridVis ? 1 : 0,
                     transform: gridVis ? "translateY(0)" : "translateY(28px)",
-                    transition: `all 0.6s cubic-bezier(0.22,1,0.36,1) ${0.05 + i * 0.06}s`,
+                    transition: `all 0.6s cubic-bezier(0.22,1,0.36,1) ${Math.min(0.05 + i * 0.06, 0.8)}s`,
                   }}
                   className="shop-product-card"
                 >
@@ -351,9 +373,10 @@ export default function ShopPage() {
                         }}
                         onClick={(e) => {
                           e.preventDefault();
+                          const wasInWishlist = wishlist.has(product.id);
                           wishlist.toggle(product.id);
                           toast.show(
-                            wishlist.has(product.id) ? "Removed from wishlist" : "Added to wishlist",
+                            wasInWishlist ? "Removed from wishlist" : "Added to wishlist",
                             "wishlist"
                           );
                         }}
@@ -375,7 +398,12 @@ export default function ShopPage() {
                         <button
                           onClick={(e) => {
                             e.preventDefault();
-                            addItem(product, product.colors[0]?.name || "", "M", 1);
+                            if (product.sizes.length > 1 || product.colors.length > 1) {
+                              // Redirect to product page to choose size/color
+                              router.push(`/shop/${product.id}`);
+                              return;
+                            }
+                            addItem(product, product.colors[0]?.name || "", product.sizes[0] || "M", 1);
                             toast.show(`${product.name} added to cart`, "cart");
                           }}
                           style={{
@@ -466,9 +494,11 @@ export default function ShopPage() {
         @media (max-width: 768px) {
           .shop-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .shop-toolbar { flex-wrap: wrap; }
+          .shop-heading { font-size: 30px !important; }
         }
         @media (max-width: 480px) {
-          .shop-grid { grid-template-columns: 1fr !important; max-width: 340px; margin: 0 auto; }
+          .shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .shop-heading { font-size: 26px !important; }
         }
       `}</style>
     </>

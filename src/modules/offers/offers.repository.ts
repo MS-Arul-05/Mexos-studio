@@ -3,7 +3,7 @@ import { prisma } from '../../config/prisma';
 
 export const offersRepository = {
   /** Offers that are active and currently within their [startsAt, endsAt] window. */
-  findActive(now: Date): Promise<Offer[]> {
+  findActive(now: Date, limit = 50): Promise<Offer[]> {
     return prisma.offer.findMany({
       where: {
         isActive: true,
@@ -11,6 +11,7 @@ export const offersRepository = {
         endsAt: { gte: now },
       },
       orderBy: { startsAt: 'desc' },
+      take: limit,
     });
   },
 

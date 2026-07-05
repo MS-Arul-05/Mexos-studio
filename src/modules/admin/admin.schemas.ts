@@ -15,9 +15,16 @@ const productVariant = z.object({
   sku: z.string().trim().min(1),
 });
 
+const slugFormat = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug must be lowercase alphanumeric with hyphens');
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(1),
-  slug: z.string().trim().min(1),
+  slug: slugFormat,
   description: z.string().trim().optional(),
   price: money,
   currency: z.string().trim().default('INR'),
@@ -33,7 +40,7 @@ export const createProductSchema = z.object({
 export const updateProductSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
-    slug: z.string().trim().min(1).optional(),
+    slug: slugFormat.optional(),
     description: z.string().trim().optional(),
     price: money.optional(),
     currency: z.string().trim().optional(),
@@ -68,17 +75,24 @@ export const createOfferSchema = z
 export const updateOfferSchema = z
   .object({
     title: z.string().trim().min(1).optional(),
-    description: z.string().trim().optional(),
-    bannerImageUrl: z.string().url().optional(),
-    couponCode: z.string().trim().min(1).optional(),
+    description: z.string().trim().nullable().optional(),
+    bannerImageUrl: z.string().url().nullable().optional(),
+    couponCode: z.string().trim().min(1).nullable().optional(),
     discountType: z.enum(['PERCENTAGE', 'FLAT']).optional(),
     discountValue: money.optional(),
-    minOrderValue: money.optional(),
+    minOrderValue: money.nullable().optional(),
     startsAt: z.coerce.date().optional(),
     endsAt: z.coerce.date().optional(),
     isActive: z.boolean().optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' });
+  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' })
+  .refine(
+    (v) => {
+      if (v.startsAt && v.endsAt) return v.endsAt > v.startsAt;
+      return true;
+    },
+    { message: 'endsAt must be after startsAt', path: ['endsAt'] },
+  );
 
 // Admin can only set fulfillment statuses (payment-driven statuses excluded).
 export const updateOrderStatusSchema = z.object({

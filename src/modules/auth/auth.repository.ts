@@ -13,6 +13,14 @@ export const authRepository = {
     });
   },
 
+  /** Invalidate all previous unverified OTPs for a number before issuing a new one. */
+  async invalidatePreviousOtps(mobileNumber: string): Promise<void> {
+    await prisma.otpRequest.updateMany({
+      where: { mobileNumber, verified: false },
+      data: { verified: true },
+    });
+  },
+
   createOtpRequest(data: {
     mobileNumber: string;
     otpHash: string;

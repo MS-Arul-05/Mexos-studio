@@ -206,7 +206,7 @@ export default function AccountPage() {
             className="account-layout"
           >
             {/* Sidebar tabs */}
-            <div style={{ backgroundColor: "#fff", borderRadius: 18, border: "1px solid rgba(241,229,220,0.5)", padding: 8, position: "sticky", top: 88 }}>
+            <div className="account-sidebar" style={{ backgroundColor: "#fff", borderRadius: 18, border: "1px solid rgba(241,229,220,0.5)", padding: 8, position: "sticky", top: 88 }}>
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
@@ -455,6 +455,11 @@ export default function AccountPage() {
         @media (max-width: 768px) {
           .account-layout { grid-template-columns: 1fr !important; }
           .address-grid { grid-template-columns: 1fr !important; }
+          .account-sidebar { position: static !important; display: flex; flex-direction: row; overflow-x: auto; gap: 8px !important; padding: 0 !important; border-radius: 16px !important; }
+          .account-sidebar button { white-space: nowrap; padding: 10px 16px !important; font-size: 12px !important; }
+        }
+        @media (max-width: 480px) {
+          .account-heading { font-size: 24px !important; }
         }
       `}</style>
     </>

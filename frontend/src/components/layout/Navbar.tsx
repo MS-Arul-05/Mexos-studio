@@ -20,7 +20,7 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const totalItems = useCartStore((s) => s.totalItems());
+  const totalItems = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
   const wishlistCount = useWishlistStore((s) => s.ids.length);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -106,6 +106,7 @@ export default function Navbar() {
                 </span>
               </div>
               <span
+                className="nav-logo-text"
                 style={{
                   fontFamily: "var(--font-playfair), 'Playfair Display', Georgia, serif",
                   fontSize: 24,
@@ -176,14 +177,15 @@ export default function Navbar() {
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               {/* Icon buttons */}
               {[
-                { icon: Search, hideOnMobile: false, href: undefined, onClick: () => setSearchOpen(true), badge: 0 },
-                { icon: User, hideOnMobile: true, href: loggedIn ? "/account" : "/login", onClick: undefined, badge: 0 },
-                { icon: Heart, hideOnMobile: true, href: "/wishlist", onClick: undefined, badge: wishlistCount },
-              ].map(({ icon: Icon, hideOnMobile, href, onClick, badge }, i) => {
+                { icon: Search, hideOnMobile: false, href: undefined, onClick: () => setSearchOpen(true), badge: 0, label: "Search" },
+                { icon: User, hideOnMobile: true, href: loggedIn ? "/account" : "/login", onClick: undefined, badge: 0, label: "Account" },
+                { icon: Heart, hideOnMobile: true, href: "/wishlist", onClick: undefined, badge: wishlistCount, label: "Wishlist" },
+              ].map(({ icon: Icon, hideOnMobile, href, onClick, badge, label }, i) => {
                 const btn = (
                   <button
                     key={i}
                     onClick={onClick}
+                    aria-label={label}
                     className={hideOnMobile ? "hidden sm:flex" : "flex"}
                     style={{
                       position: "relative",
@@ -234,59 +236,58 @@ export default function Navbar() {
               })}
 
               {/* Cart with badge */}
-              <Link href="/checkout" style={{ textDecoration: "none" }}>
-                <button
-                  style={{
-                    position: "relative",
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    border: "none",
-                    background: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: "#4B5563",
-                    transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#FFF5EB";
-                    e.currentTarget.style.color = "#E9987A";
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "#4B5563";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
-                  <ShoppingBag size={18} strokeWidth={1.5} />
-                  {totalItems > 0 && (
-                    <span
-                      className="cart-badge"
-                      style={{
-                        position: "absolute",
-                        top: 3,
-                        right: 1,
-                        width: 17,
-                        height: 17,
-                        backgroundColor: "#E9987A",
-                        color: "#fff",
-                        fontSize: 9,
-                        fontWeight: 700,
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-                        boxShadow: "0 2px 8px rgba(233,152,122,0.4)",
-                      }}
-                    >
-                      {totalItems > 9 ? "9+" : totalItems}
-                    </span>
-                  )}
-                </button>
+              <Link
+                href="/checkout"
+                aria-label="Cart"
+                style={{
+                  position: "relative",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#4B5563",
+                  textDecoration: "none",
+                  transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#FFF5EB";
+                  e.currentTarget.style.color = "#E9987A";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.color = "#4B5563";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                <ShoppingBag size={18} strokeWidth={1.5} />
+                {totalItems > 0 && (
+                  <span
+                    className="cart-badge"
+                    style={{
+                      position: "absolute",
+                      top: 3,
+                      right: 1,
+                      width: 17,
+                      height: 17,
+                      backgroundColor: "#E9987A",
+                      color: "#fff",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+                      boxShadow: "0 2px 8px rgba(233,152,122,0.4)",
+                    }}
+                  >
+                    {totalItems > 9 ? "9+" : totalItems}
+                  </span>
+                )}
               </Link>
 
               {/* Divider - desktop only */}
@@ -301,35 +302,34 @@ export default function Navbar() {
               />
 
               {/* Design Now CTA - desktop */}
-              <Link href="/customize" style={{ textDecoration: "none" }}>
-                <button
-                  className="nav-cta hidden lg:flex"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "9px 20px",
-                    backgroundColor: "#E9987A",
-                    color: "#fff",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    borderRadius: 10,
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-                    boxShadow: "0 4px 16px rgba(233,152,122,0.3)",
-                    transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <Palette size={14} strokeWidth={2} />
-                  Design Now
-                </button>
+              <Link
+                href="/customize"
+                className="nav-cta hidden lg:flex"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "9px 20px",
+                  backgroundColor: "#E9987A",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+                  boxShadow: "0 4px 16px rgba(233,152,122,0.3)",
+                  transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Palette size={14} strokeWidth={2} />
+                Design Now
               </Link>
 
               {/* Mobile hamburger */}
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
                 className="lg:hidden"
                 style={{
                   width: 42,
@@ -399,6 +399,7 @@ export default function Navbar() {
         {/* Mobile close button */}
         <button
           onClick={() => setMobileOpen(false)}
+          aria-label="Close menu"
           style={{
             position: "absolute",
             top: 20,
@@ -486,31 +487,30 @@ export default function Navbar() {
         </div>
 
         {/* Mobile CTA */}
-        <Link href="/customize" onClick={() => setMobileOpen(false)} style={{ textDecoration: "none" }}>
-          <button
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              width: "100%",
-              padding: "14px 24px",
-              backgroundColor: "#E9987A",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              borderRadius: 14,
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
-              boxShadow: "0 6px 20px rgba(233,152,122,0.3)",
-              marginTop: 16,
-            }}
-          >
-            <Palette size={16} strokeWidth={2} />
-            Design Now
-            <ArrowRight size={14} />
-          </button>
+        <Link
+          href="/customize"
+          onClick={() => setMobileOpen(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            width: "100%",
+            padding: "14px 24px",
+            backgroundColor: "#E9987A",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            borderRadius: 14,
+            textDecoration: "none",
+            fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+            boxShadow: "0 6px 20px rgba(233,152,122,0.3)",
+            marginTop: 16,
+          }}
+        >
+          <Palette size={16} strokeWidth={2} />
+          Design Now
+          <ArrowRight size={14} />
         </Link>
       </div>
 
@@ -543,6 +543,9 @@ export default function Navbar() {
           background-color: #d4836a !important;
           transform: translateY(-1px);
           box-shadow: 0 6px 20px rgba(233,152,122,0.4) !important;
+        }
+        @media (max-width: 380px) {
+          .nav-logo-text { font-size: 18px !important; }
         }
       `}</style>
     </>

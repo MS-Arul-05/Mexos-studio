@@ -54,6 +54,16 @@ export default function CheckoutPage() {
   const shipping = totalPrice() >= 999 ? 0 : 79;
   const grandTotal = totalPrice() + shipping;
 
+  // Preload Razorpay script when online payment is likely.
+  useEffect(() => {
+    if (payMethod === "online" && !(window as any).Razorpay) {
+      const s = document.createElement("script");
+      s.src = "https://checkout.razorpay.com/v1/checkout.js";
+      s.async = true;
+      document.body.appendChild(s);
+    }
+  }, [payMethod]);
+
   const handlePlaceOrder = async () => {
     if (payMethod === "whatsapp") {
       const itemLines = items.map((i) => `${i.product.name} (${i.color}, ${i.size}) x${i.quantity} — ₹${i.product.price * i.quantity}`).join("\n");
@@ -110,14 +120,16 @@ export default function CheckoutPage() {
           { auth: loggedIn, headers: order.guestToken ? { "X-Guest-Token": order.guestToken } : {} },
         );
         if (session.keyId) {
-          // Real gateway configured — open Razorpay Checkout.
-          await new Promise<void>((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = "https://checkout.razorpay.com/v1/checkout.js";
-            s.onload = () => resolve();
-            s.onerror = () => reject(new Error("Could not load payment SDK"));
-            document.body.appendChild(s);
-          });
+          // Load Razorpay SDK if not already loaded.
+          if (!(window as any).Razorpay) {
+            await new Promise<void>((resolve, reject) => {
+              const s = document.createElement("script");
+              s.src = "https://checkout.razorpay.com/v1/checkout.js";
+              s.onload = () => resolve();
+              s.onerror = () => reject(new Error("Could not load payment SDK. Please retry."));
+              document.body.appendChild(s);
+            });
+          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           new (window as any).Razorpay({
             key: session.keyId,
@@ -209,13 +221,13 @@ export default function CheckoutPage() {
             <p style={{ fontSize: 12, fontWeight: 600, color: "#E9987A", textTransform: "uppercase", letterSpacing: 2, margin: "0 0 8px", fontFamily: "var(--font-poppins), sans-serif" }}>
               Checkout
             </p>
-            <h1 style={{ fontFamily: "var(--font-playfair), serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: 0 }}>
+            <h1 className="checkout-heading" style={{ fontFamily: "var(--font-playfair), serif", fontSize: 40, fontWeight: 700, color: "#1F2937", margin: 0 }}>
               Your Cart
             </h1>
           </div>
 
           {/* Stepper */}
-          <div style={{
+          <div className="checkout-stepper" style={{
             display: "flex", alignItems: "center", gap: 0, marginBottom: 44,
             opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : "translateY(14px)",
             transition: "all 0.7s cubic-bezier(0.22,1,0.36,1) 0.1s",
@@ -596,6 +608,16 @@ export default function CheckoutPage() {
         @media (max-width: 900px) {
           .checkout-grid { grid-template-columns: 1fr !important; }
           .addr-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .checkout-grid { gap: 20px !important; }
+          .checkout-stepper { overflow-x: auto; }
+          .checkout-stepper span { font-size: 11px !important; }
+          .checkout-heading { font-size: 28px !important; }
+        }
+        @media (max-width: 480px) {
+          .checkout-stepper .step-connector { width: 24px !important; margin: 0 6px !important; }
+          .checkout-heading { font-size: 24px !important; }
         }
       `}</style>
     </>

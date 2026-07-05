@@ -3,7 +3,9 @@ import { prisma } from '../../config/prisma';
 import { AppError } from '../../utils/app-error';
 
 const withOrder = { order: true } satisfies Prisma.PaymentInclude;
-const withOrderItems = { order: { include: { items: true } } } satisfies Prisma.PaymentInclude;
+const withOrderItems = {
+  order: { include: { items: true, user: { select: { mobileNumber: true } } } },
+} satisfies Prisma.PaymentInclude;
 
 export type PaymentWithOrder = Prisma.PaymentGetPayload<{ include: typeof withOrder }>;
 export type PaymentWithOrderItems = Prisma.PaymentGetPayload<{ include: typeof withOrderItems }>;
@@ -78,7 +80,11 @@ export const paymentsRepository = {
           rawWebhookPayload: rawPayload,
         },
       });
-      await tx.order.update({ where: { id: payment.orderId }, data: { status: 'CONFIRMED' } });
+      const moved = await tx.order.updateMany({
+        where: { id: payment.orderId, status: 'PENDING_PAYMENT' },
+        data: { status: 'CONFIRMED' },
+      });
+      if (moved.count === 0) return; // already terminal or cancelled — don't re-confirm
       await tx.orderStatusHistory.create({
         data: {
           orderId: payment.orderId,
