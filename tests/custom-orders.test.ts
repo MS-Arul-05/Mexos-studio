@@ -3,6 +3,7 @@ jest.mock('../src/modules/custom-orders/custom-orders.repository', () => ({
     create: jest.fn(),
     findById: jest.fn(),
     update: jest.fn(),
+    updateIfDraft: jest.fn(),
   },
 }));
 jest.mock('../src/storage', () => ({
@@ -23,7 +24,7 @@ import { createApp } from '../src/app';
 import { customOrdersRepository } from '../src/modules/custom-orders/custom-orders.repository';
 import { storageProvider } from '../src/storage';
 import { virusScanProvider } from '../src/storage/virus-scan';
-import { signAccessToken } from '../src/utils/jwt';
+import { signAccessToken, signGuestCustomOrderToken } from '../src/utils/jwt';
 
 const repo = customOrdersRepository as jest.Mocked<typeof customOrdersRepository>;
 const storage = storageProvider as unknown as { createUploadUrl: jest.Mock };
@@ -32,6 +33,9 @@ const app = createApp();
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const MOBILE = '+919876543210';
+// Guest orders are capability-scoped: mutations require the signed token issued at create.
+const GUEST_TOKEN_HEADER = 'X-Guest-Custom-Order-Token';
+const guestToken = signGuestCustomOrderToken(ID);
 
 const coRecord = (overrides: Record<string, unknown> = {}) => ({
   id: ID,
@@ -72,6 +76,8 @@ describe('POST /api/custom-orders', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({ status: 'DRAFT', id: ID });
+    // Guests receive a signed capability token for follow-up requests.
+    expect(typeof res.body.data.guestToken).toBe('string');
     expect(repo.create).toHaveBeenCalledTimes(1);
   });
 
@@ -104,16 +110,32 @@ describe('PATCH /api/custom-orders/:id', () => {
     repo.findById.mockResolvedValue(coRecord() as never);
     repo.update.mockResolvedValue(coRecord({ color: 'White' }) as never);
 
-    const res = await request(app).patch(`/api/custom-orders/${ID}`).send({ color: 'White' });
+    const res = await request(app)
+      .patch(`/api/custom-orders/${ID}`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
+      .send({ color: 'White' });
 
     expect(res.status).toBe(200);
     expect(res.body.data.color).toBe('White');
   });
 
+  it('returns 404 when a guest lacks the capability token', async () => {
+    repo.findById.mockResolvedValue(coRecord() as never);
+
+    const res = await request(app).patch(`/api/custom-orders/${ID}`).send({ color: 'White' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('CUSTOM_ORDER_NOT_FOUND');
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
   it('rejects editing a non-DRAFT order with 409', async () => {
     repo.findById.mockResolvedValue(coRecord({ status: 'SUBMITTED' }) as never);
 
-    const res = await request(app).patch(`/api/custom-orders/${ID}`).send({ color: 'White' });
+    const res = await request(app)
+      .patch(`/api/custom-orders/${ID}`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
+      .send({ color: 'White' });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CUSTOM_ORDER_NOT_EDITABLE');
@@ -147,6 +169,7 @@ describe('POST /api/custom-orders/:id/upload-url', () => {
 
     const res = await request(app)
       .post(`/api/custom-orders/${ID}/upload-url`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ fileName: 'my design.png', contentType: 'image/png' });
 
     expect(res.status).toBe(200);
@@ -171,10 +194,11 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
   it('attaches an uploaded file URL', async () => {
     repo.findById.mockResolvedValue(coRecord() as never);
     const fileUrl = 'https://stub-storage.local/files/custom-orders/x/design.png';
-    repo.update.mockResolvedValue(coRecord({ uploadedFileUrl: fileUrl }) as never);
+    repo.updateIfDraft.mockResolvedValue(coRecord({ uploadedFileUrl: fileUrl }) as never);
 
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileUrl: fileUrl });
 
     expect(res.status).toBe(200);
@@ -185,10 +209,11 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
     repo.findById.mockResolvedValue(coRecord() as never);
     const key = `custom-orders/${ID}/abc-design.png`;
     const expected = `https://stub-storage.local/files/${key}`;
-    repo.update.mockResolvedValue(coRecord({ uploadedFileUrl: expected }) as never);
+    repo.updateIfDraft.mockResolvedValue(coRecord({ uploadedFileUrl: expected }) as never);
 
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileKey: key });
 
     expect(res.status).toBe(200);
@@ -199,6 +224,7 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
     repo.findById.mockResolvedValue(coRecord() as never);
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileUrl: 'https://evil.example/malware.png' });
 
     expect(res.status).toBe(400);
@@ -209,6 +235,7 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
     repo.findById.mockResolvedValue(coRecord() as never);
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileKey: 'custom-orders/99999999-9999-4999-8999-999999999999/x.png' });
 
     expect(res.status).toBe(400);
@@ -221,11 +248,12 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
 
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileUrl: 'https://stub-storage.local/files/custom-orders/x/design.png' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('FILE_REJECTED');
-    expect(repo.update).not.toHaveBeenCalled();
+    expect(repo.updateIfDraft).not.toHaveBeenCalled();
   });
 
   it('rejects the file when the scanner errors (fail-closed)', async () => {
@@ -234,6 +262,7 @@ describe('PATCH /api/custom-orders/:id/attach-file', () => {
 
     const res = await request(app)
       .patch(`/api/custom-orders/${ID}/attach-file`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
       .send({ uploadedFileUrl: 'https://stub-storage.local/files/custom-orders/x/design.png' });
 
     expect(res.status).toBe(400);
@@ -246,7 +275,10 @@ describe('POST /api/custom-orders/:id/submit', () => {
     repo.findById.mockResolvedValue(coRecord({ pricingMode: 'WHATSAPP_CONFIRMED' }) as never);
     repo.update.mockResolvedValue(coRecord({ status: 'SUBMITTED' }) as never);
 
-    const res = await request(app).post(`/api/custom-orders/${ID}/submit`).send();
+    const res = await request(app)
+      .post(`/api/custom-orders/${ID}/submit`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
+      .send();
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('SUBMITTED');
@@ -267,7 +299,10 @@ describe('POST /api/custom-orders/:id/submit', () => {
       coRecord({ status: 'QUOTED', quotedPrice: new Prisma.Decimal('798.00') }) as never,
     );
 
-    const res = await request(app).post(`/api/custom-orders/${ID}/submit`).send();
+    const res = await request(app)
+      .post(`/api/custom-orders/${ID}/submit`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
+      .send();
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('QUOTED');
@@ -279,7 +314,10 @@ describe('POST /api/custom-orders/:id/submit', () => {
 
   it('rejects submitting a non-DRAFT order with 409', async () => {
     repo.findById.mockResolvedValue(coRecord({ status: 'SUBMITTED' }) as never);
-    const res = await request(app).post(`/api/custom-orders/${ID}/submit`).send();
+    const res = await request(app)
+      .post(`/api/custom-orders/${ID}/submit`)
+      .set(GUEST_TOKEN_HEADER, guestToken)
+      .send();
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('CUSTOM_ORDER_NOT_SUBMITTABLE');
   });

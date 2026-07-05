@@ -3,6 +3,7 @@
 jest.mock('../src/modules/auth/auth.repository', () => ({
   authRepository: {
     countOtpRequestsSince: jest.fn(),
+    invalidatePreviousOtps: jest.fn(),
     createOtpRequest: jest.fn(),
     findLatestUnverifiedOtp: jest.fn(),
     markOtpVerified: jest.fn(),

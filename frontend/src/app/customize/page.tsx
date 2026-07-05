@@ -135,7 +135,7 @@ export default function CustomizePage() {
       const sizeBreakdown = Object.entries(selectedSizes).map(([s, q]) => `${s}:${q}`).join(", ");
       const loggedIn = tokenStore.isLoggedIn;
 
-      const created = await api.post<{ id: string }>(
+      const created = await api.post<{ id: string; guestToken?: string }>(
         "/custom-orders",
         {
           baseType: type,
@@ -157,20 +157,26 @@ export default function CustomizePage() {
         { auth: loggedIn },
       );
 
+      // Guest orders are capability-scoped: follow-up requests must present the
+      // signed token returned at creation (logged-in users authenticate instead).
+      const guestHeaders: Record<string, string> = created.guestToken
+        ? { "X-Guest-Custom-Order-Token": created.guestToken }
+        : {};
+
       // Best-effort design upload (works with real S3; stub storage skips silently).
       if (fileObj) {
         try {
           const up = await api.post<{ uploadUrl: string; key: string }>(
             `/custom-orders/${created.id}/upload-url`,
             { fileName: fileObj.name, contentType: fileObj.type, fileSize: fileObj.size },
-            { auth: loggedIn },
+            { auth: loggedIn, headers: guestHeaders },
           );
           await fetch(up.uploadUrl, { method: "PUT", headers: { "Content-Type": fileObj.type }, body: fileObj });
-          await api.patch(`/custom-orders/${created.id}/attach-file`, { uploadedFileKey: up.key }, { auth: loggedIn });
+          await api.patch(`/custom-orders/${created.id}/attach-file`, { uploadedFileKey: up.key }, { auth: loggedIn, headers: guestHeaders });
         } catch { /* design intent is still captured in the description */ }
       }
 
-      await api.post(`/custom-orders/${created.id}/submit`, undefined, { auth: loggedIn });
+      await api.post(`/custom-orders/${created.id}/submit`, undefined, { auth: loggedIn, headers: guestHeaders });
       setSubmittedRef(created.id);
       return created.id;
     } catch (e) {
