@@ -8,9 +8,8 @@ coupons, WhatsApp notifications, and Meta Ads conversion tracking.
 **Backend:** Node 20 · Express 4 · TypeScript (strict) · Prisma 5 · PostgreSQL 16 · Zod · Jest
 **Frontend:** Next.js 16 · React 19 · Tailwind 4 · Zustand
 
-> Design/planning history lives in [`00_README.md`](00_README.md)–[`08_ORCHESTRATOR.md`](08_ORCHESTRATOR.md)
-> and [`DECISIONS.md`](DECISIONS.md). Runtime architecture is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
-> Going-live runbook: [`GOING_LIVE.md`](GOING_LIVE.md).
+> Engineering decisions live in [`DECISIONS.md`](DECISIONS.md). Runtime architecture is in
+> [`ARCHITECTURE.md`](ARCHITECTURE.md). Going-live runbook: [`GOING_LIVE.md`](GOING_LIVE.md).
 
 ---
 
