@@ -196,10 +196,13 @@ describe('PATCH /api/admin/orders/:id/status (Decision #2)', () => {
       'SHIPPED',
       'Dispatched via BlueDart',
       'default',
+      ['DELIVERED', 'CANCELLED'],
     );
   });
 
   it('rejects transitioning a terminal (DELIVERED) order with 409', async () => {
+    // setOrderStatus returns null when the order is in a terminal state (TOCTOU-safe guard).
+    adminRepo.setOrderStatus.mockResolvedValue(null as never);
     orderRepo.findById.mockResolvedValue(orderRecord({ status: 'DELIVERED' }) as never);
     const res = await request(app)
       .patch(`/api/admin/orders/${ORDER_ID}/status`)
@@ -207,7 +210,6 @@ describe('PATCH /api/admin/orders/:id/status (Decision #2)', () => {
       .send({ status: 'SHIPPED' });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('ORDER_TERMINAL');
-    expect(adminRepo.setOrderStatus).not.toHaveBeenCalled();
   });
 
   it('rejects a payment-driven status (not admin-settable)', async () => {
