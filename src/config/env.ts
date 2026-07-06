@@ -50,6 +50,9 @@ const envSchema = z.object({
   SMS_PROVIDER: z.enum(['console', 'msg91', 'twilio']).default('console'),
   SMS_PROVIDER_API_KEY: z.string().optional(), // MSG91 authkey
   SMS_TEMPLATE_ID: z.string().optional(), // MSG91 flow template id
+  // MSG91 flow variable name for the OTP value. Case-sensitive: must match the
+  // text between the ## markers in your DLT template (e.g. ##OTP## → "OTP").
+  SMS_TEMPLATE_VAR: z.string().default('OTP'),
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM: z.string().optional(), // Twilio sender number, E.164
