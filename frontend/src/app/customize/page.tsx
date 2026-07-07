@@ -58,59 +58,171 @@ interface Art { kind: ArtKind; url?: string; label: string }
 type Side = "front" | "back";
 type View = "front" | "back" | "360";
 
-// ── Garment SVG (recolours; tee / hoodie / polo, front & back) ────────────────
-const TEE_FRONT =
-  "M106,44 C120,64 180,64 194,44 L232,58 C286,86 292,120 286,132 L300,158 C276,176 250,168 236,152 L236,306 C236,318 228,322 218,322 L82,322 C72,322 64,318 64,306 L64,152 C50,168 24,176 0,158 L14,132 C8,120 14,86 68,58 Z";
-const TEE_BACK =
-  "M106,44 C120,54 180,54 194,44 L232,58 C286,86 292,120 286,132 L300,158 C276,176 250,168 236,152 L236,306 C236,318 228,322 218,322 L82,322 C72,322 64,318 64,306 L64,152 C50,168 24,176 0,158 L14,132 C8,120 14,86 68,58 Z";
-const COLLAR_FRONT = "M106,44 C120,64 180,64 194,44";
-const COLLAR_BACK = "M106,44 C120,54 180,54 194,44";
-const HEM = "M66,308 C120,300 180,300 234,308";
+// ── Garment SVG (realistic recolourable technical flats) ──────────────────────
+// Depth is built from semi-transparent BLACK (shadows) + WHITE (highlights) over a
+// solid colour fill, so recolour looks right on ANY colour: dark garments read via
+// highlights, light garments via shadows. Markup is authored as an SVG string
+// (verified in a headless-Chrome render harness) and injected once per garment.
+function garmentInner(shape: string, side: Side, color: string): string {
+  const light = isLight(color);
+  const back = side === "back";
+  const S = (o: number) => `rgba(0,0,0,${o})`;
+  const L = (o: number) => `rgba(255,255,255,${o})`;
+  const outline = light ? S(0.28) : S(0.55);
+  const seam = light ? S(0.16) : L(0.14);
+  const stitch = light ? S(0.22) : L(0.2);
+  const foldA = light ? S(0.09) : L(0.055);
+  const foldB = light ? S(0.06) : L(0.04);
+  const ribShade = light ? S(0.13) : S(0.2);
+  const ribLight = L(light ? 0.28 : 0.1);
+  const uid = shape + side;
+
+  const rib = (x: number, y: number, w: number, h: number, r: number) => {
+    const n = Math.max(6, Math.round(w / 7));
+    let lines = "";
+    for (let i = 1; i < n; i++) {
+      const lx = x + (w / n) * i;
+      lines += `<line x1="${lx}" y1="${y + 2}" x2="${lx}" y2="${y + h - 2}" stroke="${ribShade}" stroke-width="1.1"/>`;
+      lines += `<line x1="${lx + 1.4}" y1="${y + 2}" x2="${lx + 1.4}" y2="${y + h - 2}" stroke="${ribLight}" stroke-width="0.7"/>`;
+    }
+    const cid = `rib-${uid}-${Math.round(x)}-${Math.round(y)}`;
+    return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${color}" stroke="${outline}" stroke-width="2"/>`
+      + `<clipPath id="${cid}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/></clipPath>`
+      + `<g clip-path="url(#${cid})">${lines}</g></g>`;
+  };
+
+  const defs = `<defs>
+    <linearGradient id="body-${uid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="${light ? 0.1 : 0.06}"/>
+      <stop offset="0.42" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="${light ? 0.055 : 0.16}"/>
+    </linearGradient>
+    <radialGradient id="chest-${uid}" cx="0.5" cy="0.4" r="0.55">
+      <stop offset="0" stop-color="#fff" stop-opacity="${light ? 0.16 : 0.07}"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft-${uid}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.2"/></filter>
+  </defs>`;
+
+  if (shape === "hoodie") return defs + hoodie();
+  if (shape === "polo") return defs + polo();
+  return defs + tee();
+
+  function tee(): string {
+    const bodyF =
+      "M108,54 C124,72 176,72 192,54 L210,60 C240,68 260,90 272,120 C274,128 270,134 262,132 L226,126 " +
+      "L226,300 C226,312 218,318 208,318 L92,318 C82,318 74,312 74,300 L74,126 " +
+      "L38,132 C30,134 26,128 28,120 C40,90 60,68 90,60 Z";
+    const bodyB =
+      "M104,54 C120,68 180,68 196,54 L212,60 C242,68 262,90 272,120 C274,128 270,134 262,132 L226,126 " +
+      "L226,300 C226,312 218,318 208,318 L92,318 C82,318 74,312 74,300 L74,126 " +
+      "L38,132 C30,134 26,128 28,120 C40,90 60,68 88,60 Z";
+    const d = back ? bodyB : bodyF;
+    const collar = back
+      ? `<path d="M104,54 C120,68 180,68 196,54" fill="none" stroke="${seam}" stroke-width="2.6"/>`
+      : `<path d="M108,54 C124,72 176,72 192,54" fill="none" stroke="${seam}" stroke-width="3"/>
+         <path d="M112,60 C124,76 176,76 188,60" fill="none" stroke="${seam}" stroke-width="1.4" opacity="0.65"/>`;
+    return `
+      <path d="${d}" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="${d}" fill="url(#body-${uid})"/>
+      <ellipse cx="150" cy="150" rx="80" ry="94" fill="url(#chest-${uid})"/>
+      <g filter="url(#soft-${uid})">
+        <path d="M74,140 C68,185 70,255 76,300 L92,300 C86,245 86,180 94,140 Z" fill="${foldA}"/>
+        <path d="M226,140 C232,185 230,255 224,300 L208,300 C214,245 214,180 206,140 Z" fill="${foldA}"/>
+        <path d="M102,66 C86,78 66,98 32,124 L42,132 C74,104 92,86 110,76 Z" fill="${foldB}"/>
+        <path d="M198,66 C214,78 234,98 268,124 L258,132 C226,104 208,86 190,76 Z" fill="${foldB}"/>
+      </g>
+      <path d="M210,60 C220,82 224,106 226,126" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>
+      <path d="M90,60 C80,82 76,106 74,126" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>
+      ${collar}
+      <path d="M74,312 C110,304 190,304 226,312" fill="none" stroke="${seam}" stroke-width="1.6"/>`;
+  }
+
+  function hoodie(): string {
+    const body =
+      "M96,96 C96,72 108,58 150,58 C192,58 204,72 204,96 " +
+      "L232,104 C250,110 262,124 270,150 L288,232 C290,244 282,252 270,250 L246,244 L246,300 " +
+      "C246,314 238,320 226,320 L74,320 C62,320 54,314 54,300 L54,244 L30,250 " +
+      "C18,252 10,244 12,232 L30,150 C38,124 50,110 68,104 Z";
+    const hoodShape = back
+      ? `<path d="M112,64 C112,30 188,30 188,64 C170,54 130,54 112,64 Z" fill="${color}" stroke="${outline}" stroke-width="2.4" stroke-linejoin="round"/>`
+      : `<path d="M104,92 C100,44 124,20 150,20 C176,20 200,44 196,92 C180,70 168,60 150,60 C132,60 120,70 104,92 Z" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
+         <path d="M126,66 C134,96 138,120 150,120 C162,120 166,96 174,66 C166,78 158,84 150,84 C142,84 134,78 126,66 Z" fill="${S(light ? 0.22 : 0.34)}"/>`;
+    const cuffs = rib(24, 244, 34, 30, 7) + rib(242, 244, 34, 30, 7);
+    const hem = rib(54, 300, 172, 22, 6);
+    const pocket = back ? "" :
+      `<path d="M104,238 L196,238 L206,292 L94,292 Z" fill="${light ? S(0.05) : L(0.05)}" stroke="${seam}" stroke-width="2" stroke-linejoin="round"/>
+       <path d="M104,238 C104,252 116,262 130,262 L170,262 C184,262 196,252 196,238" fill="none" stroke="${stitch}" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.7"/>
+       <path d="M118,238 L110,290" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+       <path d="M182,238 L190,290" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>`;
+    const strings = back ? "" :
+      `<path d="M138,84 C136,110 135,132 134,150" fill="none" stroke="${S(light ? 0.3 : 0.45)}" stroke-width="3" stroke-linecap="round"/>
+       <path d="M162,84 C164,110 165,132 166,150" fill="none" stroke="${S(light ? 0.3 : 0.45)}" stroke-width="3" stroke-linecap="round"/>
+       <circle cx="134" cy="152" r="3.4" fill="${S(0.5)}"/><circle cx="166" cy="152" r="3.4" fill="${S(0.5)}"/>`;
+    return `
+      ${back ? hoodShape : ""}
+      <path d="${body}" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="${body}" fill="url(#body-${uid})"/>
+      <ellipse cx="150" cy="150" rx="92" ry="86" fill="url(#chest-${uid})"/>
+      <g filter="url(#soft-${uid})">
+        <path d="M54,150 C50,200 52,260 58,300 L78,300 C72,250 72,190 80,150 Z" fill="${foldA}"/>
+        <path d="M246,150 C250,200 248,260 242,300 L222,300 C228,250 228,190 220,150 Z" fill="${foldA}"/>
+        <path d="M70,110 C54,124 40,160 28,224 L46,230 C58,168 72,132 86,118 Z" fill="${foldA}"/>
+        <path d="M230,110 C246,124 260,160 272,224 L254,230 C242,168 228,132 214,118 Z" fill="${foldA}"/>
+        <path d="M150,60 C138,64 130,80 128,96 L172,96 C170,80 162,64 150,60 Z" fill="${foldB}"/>
+      </g>
+      ${cuffs}
+      ${hem}
+      ${pocket}
+      ${!back ? hoodShape : ""}
+      ${strings}
+      <path d="M96,96 C120,86 180,86 204,96" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.8"/>`;
+  }
+
+  function polo(): string {
+    const bodyF =
+      "M112,62 C122,82 132,88 150,88 C168,88 178,82 188,62 L210,66 C240,74 260,96 272,126 C274,134 270,140 262,138 L226,132 " +
+      "L226,300 C226,312 218,318 208,318 L92,318 C82,318 74,312 74,300 L74,132 " +
+      "L38,138 C30,140 26,134 28,126 C40,96 60,74 90,66 Z";
+    const bodyB =
+      "M108,62 C120,74 180,74 192,62 L210,66 C240,74 260,96 272,126 C274,134 270,140 262,138 L226,132 " +
+      "L226,300 C226,312 218,318 208,318 L92,318 C82,318 74,312 74,300 L74,132 " +
+      "L38,138 C30,140 26,134 28,126 C40,96 60,74 88,66 Z";
+    const d = back ? bodyB : bodyF;
+    const collar = back
+      ? `<path d="M108,62 C120,74 180,74 192,62 C180,66 168,68 150,68 C132,68 120,66 108,62 Z" fill="${color}" stroke="${outline}" stroke-width="2" stroke-linejoin="round"/>`
+      : `<path d="M150,86 L118,62 L128,52 L150,74 Z" fill="${color}" stroke="${outline}" stroke-width="2.2" stroke-linejoin="round"/>
+         <path d="M150,86 L182,62 L172,52 L150,74 Z" fill="${color}" stroke="${outline}" stroke-width="2.2" stroke-linejoin="round"/>`;
+    const placket = back ? "" :
+      `<path d="M141,74 L141,120 L159,120 L159,74" fill="none" stroke="${seam}" stroke-width="2"/>
+       <path d="M141,74 L141,120" stroke="${stitch}" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>
+       <circle cx="150" cy="90" r="2.6" fill="${S(0.4)}"/><circle cx="150" cy="108" r="2.6" fill="${S(0.4)}"/>`;
+    const cuffs = back ? "" :
+      `<path d="M210,66 C220,88 224,112 226,132" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>
+       <path d="M90,66 C80,88 76,112 74,132" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>`;
+    return `
+      <path d="${d}" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
+      <path d="${d}" fill="url(#body-${uid})"/>
+      <ellipse cx="150" cy="162" rx="80" ry="92" fill="url(#chest-${uid})"/>
+      <g filter="url(#soft-${uid})">
+        <path d="M74,146 C68,188 70,255 76,300 L92,300 C86,245 86,182 94,146 Z" fill="${foldA}"/>
+        <path d="M226,146 C232,188 230,255 224,300 L208,300 C214,245 214,182 206,146 Z" fill="${foldA}"/>
+        <path d="M102,72 C86,84 66,104 32,130 L42,138 C74,110 92,92 110,82 Z" fill="${foldB}"/>
+        <path d="M198,72 C214,84 234,104 268,130 L258,138 C226,110 208,92 190,82 Z" fill="${foldB}"/>
+      </g>
+      ${cuffs}
+      ${collar}
+      ${placket}
+      <path d="M74,312 C110,304 190,304 226,312" fill="none" stroke="${seam}" stroke-width="1.6"/>`;
+  }
+}
 
 function GarmentSVG({ shape, side, color, boxy }: { shape: string; side: Side; color: string; boxy: boolean }) {
-  const light = isLight(color);
-  const outline = light ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.42)";
-  const seam = light ? "rgba(0,0,0,0.14)" : "rgba(0,0,0,0.30)";
-  const body = side === "back" ? TEE_BACK : TEE_FRONT;
-  const collar = side === "back" ? COLLAR_BACK : COLLAR_FRONT;
   // Oversized/boxy widens the garment slightly.
   const sx = boxy ? 1.06 : 1;
+  const inner = `<g transform="translate(${150 - 150 * sx},0) scale(${sx},1)">${garmentInner(shape, side, color)}</g>`;
   return (
-    <svg viewBox="0 0 300 340" width="100%" height="100%" style={{ display: "block" }} aria-hidden="true">
-      <defs>
-        <linearGradient id="mx-sheen" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity={light ? 0 : 0.1} />
-          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000000" stopOpacity="0.12" />
-        </linearGradient>
-      </defs>
-      <g transform={`translate(${150 - 150 * sx},0) scale(${sx},1)`}>
-        {shape === "hoodie" && side !== "back" && (
-          <path d="M104,46 C108,8 192,8 196,46 C176,40 124,40 104,46 Z" fill={color} stroke={outline} strokeWidth={3} strokeLinejoin="round" />
-        )}
-        <path d={body} fill={color} stroke={outline} strokeWidth={3} strokeLinejoin="round" />
-        <path d={body} fill="url(#mx-sheen)" stroke="none" />
-        <path d={collar} fill="none" stroke={seam} strokeWidth={2.6} />
-        {side !== "back" && <path d={collar.replace("44", "50")} fill="none" stroke={seam} strokeWidth={1.6} opacity={0.7} />}
-        <path d={HEM} fill="none" stroke={seam} strokeWidth={1.6} />
-        {shape === "hoodie" && side !== "back" && (
-          <>
-            <path d="M98,232 L202,232 L212,296 L88,296 Z" fill="none" stroke={seam} strokeWidth={2} strokeLinejoin="round" />
-            <line x1="140" y1="52" x2="136" y2="120" stroke={seam} strokeWidth={3} strokeLinecap="round" />
-            <line x1="160" y1="52" x2="164" y2="120" stroke={seam} strokeWidth={3} strokeLinecap="round" />
-          </>
-        )}
-        {shape === "polo" && side !== "back" && (
-          <>
-            <path d="M150,48 L122,54 L140,78 Z" fill={color} stroke={outline} strokeWidth={2.4} strokeLinejoin="round" />
-            <path d="M150,48 L178,54 L160,78 Z" fill={color} stroke={outline} strokeWidth={2.4} strokeLinejoin="round" />
-            <rect x="143" y="52" width="14" height="60" rx="3" fill="none" stroke={seam} strokeWidth={2} />
-            <circle cx="150" cy="70" r="2.4" fill={seam} />
-            <circle cx="150" cy="92" r="2.4" fill={seam} />
-          </>
-        )}
-      </g>
-    </svg>
+    <svg viewBox="0 0 300 360" width="100%" height="100%" style={{ display: "block" }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: inner }} />
   );
 }
 
