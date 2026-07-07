@@ -139,44 +139,51 @@ function garmentInner(shape: string, side: Side, color: string): string {
   }
 
   function hoodie(): string {
+    // Body + long down-hanging sleeves as one silhouette; ribbed wrist cuffs + hem,
+    // hood, kangaroo pocket + drawstrings (front). Sleeves taper to cuffs near the hem.
     const body =
-      "M96,96 C96,72 108,58 150,58 C192,58 204,72 204,96 " +
-      "L232,104 C250,110 262,124 270,150 L288,232 C290,244 282,252 270,250 L246,244 L246,300 " +
-      "C246,314 238,320 226,320 L74,320 C62,320 54,314 54,300 L54,244 L30,250 " +
-      "C18,252 10,244 12,232 L30,150 C38,124 50,110 68,104 Z";
+      "M102,92 Q150,80 198,92 " +
+      "C218,104 232,134 246,182 C254,210 260,240 262,256 " +
+      "C263,261 261,266 255,266 L229,262 " +
+      "C224,222 216,184 208,156 L208,152 L216,300 " +
+      "C216,312 208,318 198,318 L102,318 C92,318 84,312 84,300 L92,152 " +
+      "C84,184 76,222 71,262 L45,266 C39,266 37,261 38,256 " +
+      "C40,240 46,210 54,182 C68,134 82,104 102,92 Z";
     const hoodShape = back
-      ? `<path d="M112,64 C112,30 188,30 188,64 C170,54 130,54 112,64 Z" fill="${color}" stroke="${outline}" stroke-width="2.4" stroke-linejoin="round"/>`
-      : `<path d="M104,92 C100,44 124,20 150,20 C176,20 200,44 196,92 C180,70 168,60 150,60 C132,60 120,70 104,92 Z" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
-         <path d="M126,66 C134,96 138,120 150,120 C162,120 166,96 174,66 C166,78 158,84 150,84 C142,84 134,78 126,66 Z" fill="${S(light ? 0.22 : 0.34)}"/>`;
-    const cuffs = rib(24, 244, 34, 30, 7) + rib(242, 244, 34, 30, 7);
-    const hem = rib(54, 300, 172, 22, 6);
+      ? `<path d="M108,90 C104,42 196,42 192,90 Z" fill="${color}" stroke="${outline}" stroke-width="2.4" stroke-linejoin="round"/>
+         <path d="M150,46 L150,86" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>
+         <path d="M118,84 C136,92 164,92 182,84" fill="none" stroke="${seam}" stroke-width="1.6"/>`
+      : `<path d="M102,92 C96,44 122,20 150,20 C178,20 204,44 198,92 C182,72 168,62 150,62 C132,62 118,72 102,92 Z" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
+         <path d="M122,70 C130,102 138,124 150,124 C162,124 170,102 178,70 C168,82 160,88 150,88 C140,88 132,82 122,70 Z" fill="${S(light ? 0.22 : 0.36)}"/>`;
+    const cuffs = rib(38, 250, 34, 22, 6) + rib(228, 250, 34, 22, 6);
+    const hem = rib(84, 298, 132, 22, 6);
     const pocket = back ? "" :
-      `<path d="M104,238 L196,238 L206,292 L94,292 Z" fill="${light ? S(0.05) : L(0.05)}" stroke="${seam}" stroke-width="2" stroke-linejoin="round"/>
-       <path d="M104,238 C104,252 116,262 130,262 L170,262 C184,262 196,252 196,238" fill="none" stroke="${stitch}" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.7"/>
-       <path d="M118,238 L110,290" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
-       <path d="M182,238 L190,290" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>`;
+      `<path d="M106,208 L194,208 L204,266 L96,266 Z" fill="${light ? S(0.05) : L(0.05)}" stroke="${seam}" stroke-width="2" stroke-linejoin="round"/>
+       <path d="M106,208 C106,220 116,228 128,228 L172,228 C184,228 194,220 194,208" fill="none" stroke="${stitch}" stroke-width="1.4" stroke-dasharray="3 3" opacity="0.7"/>
+       <path d="M120,208 L112,264" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+       <path d="M180,208 L188,264" stroke="${S(light ? 0.12 : 0.22)}" stroke-width="6" stroke-linecap="round" opacity="0.5"/>`;
     const strings = back ? "" :
-      `<path d="M138,84 C136,110 135,132 134,150" fill="none" stroke="${S(light ? 0.3 : 0.45)}" stroke-width="3" stroke-linecap="round"/>
-       <path d="M162,84 C164,110 165,132 166,150" fill="none" stroke="${S(light ? 0.3 : 0.45)}" stroke-width="3" stroke-linecap="round"/>
-       <circle cx="134" cy="152" r="3.4" fill="${S(0.5)}"/><circle cx="166" cy="152" r="3.4" fill="${S(0.5)}"/>`;
+      `<path d="M139,86 C137,116 136,140 135,164" fill="none" stroke="${S(light ? 0.32 : 0.5)}" stroke-width="3" stroke-linecap="round"/>
+       <path d="M161,86 C163,116 164,140 165,164" fill="none" stroke="${S(light ? 0.32 : 0.5)}" stroke-width="3" stroke-linecap="round"/>
+       <circle cx="135" cy="166" r="3.6" fill="${S(0.55)}"/><circle cx="165" cy="166" r="3.6" fill="${S(0.55)}"/>`;
     return `
       ${back ? hoodShape : ""}
       <path d="${body}" fill="${color}" stroke="${outline}" stroke-width="2.6" stroke-linejoin="round"/>
       <path d="${body}" fill="url(#body-${uid})"/>
-      <ellipse cx="150" cy="150" rx="92" ry="86" fill="url(#chest-${uid})"/>
+      <ellipse cx="150" cy="160" rx="78" ry="86" fill="url(#chest-${uid})"/>
       <g filter="url(#soft-${uid})">
-        <path d="M54,150 C50,200 52,260 58,300 L78,300 C72,250 72,190 80,150 Z" fill="${foldA}"/>
-        <path d="M246,150 C250,200 248,260 242,300 L222,300 C228,250 228,190 220,150 Z" fill="${foldA}"/>
-        <path d="M70,110 C54,124 40,160 28,224 L46,230 C58,168 72,132 86,118 Z" fill="${foldA}"/>
-        <path d="M230,110 C246,124 260,160 272,224 L254,230 C242,168 228,132 214,118 Z" fill="${foldA}"/>
-        <path d="M150,60 C138,64 130,80 128,96 L172,96 C170,80 162,64 150,60 Z" fill="${foldB}"/>
+        <path d="M92,152 C86,200 88,258 90,300 L104,300 C100,250 100,196 106,152 Z" fill="${foldA}"/>
+        <path d="M208,152 C214,200 212,258 210,300 L196,300 C200,250 200,196 194,152 Z" fill="${foldA}"/>
+        <path d="M100,100 C82,120 64,170 50,250 L64,254 C78,178 92,132 110,110 Z" fill="${foldA}"/>
+        <path d="M200,100 C218,120 236,170 250,250 L236,254 C222,178 208,132 190,110 Z" fill="${foldA}"/>
       </g>
+      <path d="M102,92 C112,120 116,140 118,156" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.6"/>
+      <path d="M198,92 C188,120 184,140 182,156" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.6"/>
       ${cuffs}
       ${hem}
       ${pocket}
       ${!back ? hoodShape : ""}
-      ${strings}
-      <path d="M96,96 C120,86 180,86 204,96" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.8"/>`;
+      ${strings}`;
   }
 
   function polo(): string {
@@ -190,13 +197,18 @@ function garmentInner(shape: string, side: Side, color: string): string {
       "L38,138 C30,140 26,134 28,126 C40,96 60,74 88,66 Z";
     const d = back ? bodyB : bodyF;
     const collar = back
-      ? `<path d="M108,62 C120,74 180,74 192,62 C180,66 168,68 150,68 C132,68 120,66 108,62 Z" fill="${color}" stroke="${outline}" stroke-width="2" stroke-linejoin="round"/>`
-      : `<path d="M150,86 L118,62 L128,52 L150,74 Z" fill="${color}" stroke="${outline}" stroke-width="2.2" stroke-linejoin="round"/>
-         <path d="M150,86 L182,62 L172,52 L150,74 Z" fill="${color}" stroke="${outline}" stroke-width="2.2" stroke-linejoin="round"/>`;
+      ? `<path d="M116,62 C130,52 170,52 184,62 C184,74 170,80 150,80 C130,80 116,74 116,62 Z" fill="${color}" stroke="${outline}" stroke-width="2.2" stroke-linejoin="round"/>
+         <path d="M122,64 C134,58 166,58 178,64" fill="none" stroke="${seam}" stroke-width="1.4" opacity="0.7"/>`
+      : `<path d="M120,60 C128,54 172,54 180,60 C178,72 168,80 150,84 C132,80 122,72 120,60 Z" fill="${color}" stroke="${outline}" stroke-width="1.8" stroke-linejoin="round"/>
+         <path d="M150,98 L120,66 C124,60 132,58 138,62 L150,82 Z" fill="${color}" stroke="${outline}" stroke-width="2" stroke-linejoin="round"/>
+         <path d="M150,98 L180,66 C176,60 168,58 162,62 L150,82 Z" fill="${color}" stroke="${outline}" stroke-width="2" stroke-linejoin="round"/>
+         <path d="M132,64 L149,84" stroke="${seam}" stroke-width="1.2" opacity="0.6"/>
+         <path d="M168,64 L151,84" stroke="${seam}" stroke-width="1.2" opacity="0.6"/>`;
     const placket = back ? "" :
-      `<path d="M141,74 L141,120 L159,120 L159,74" fill="none" stroke="${seam}" stroke-width="2"/>
-       <path d="M141,74 L141,120" stroke="${stitch}" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>
-       <circle cx="150" cy="90" r="2.6" fill="${S(0.4)}"/><circle cx="150" cy="108" r="2.6" fill="${S(0.4)}"/>`;
+      `<path d="M142,82 L142,128 M158,82 L158,128" stroke="${seam}" stroke-width="1.8"/>
+       <path d="M143,84 L143,126" stroke="${stitch}" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>
+       <circle cx="150" cy="96" r="2.6" fill="${S(0.4)}" stroke="${seam}" stroke-width="0.6"/>
+       <circle cx="150" cy="112" r="2.6" fill="${S(0.4)}" stroke="${seam}" stroke-width="0.6"/>`;
     const cuffs = back ? "" :
       `<path d="M210,66 C220,88 224,112 226,132" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>
        <path d="M90,66 C80,88 76,112 74,132" fill="none" stroke="${seam}" stroke-width="1.6" opacity="0.7"/>`;
