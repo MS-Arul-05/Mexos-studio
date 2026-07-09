@@ -3,14 +3,17 @@
 Target architecture:
 
 ```
-Browser ──► Vercel (Next.js, frontend/)
+Browser ──► Vercel (Next.js, repo: mexos-studio-frontend)
                 │  NEXT_PUBLIC_API_URL
                 ▼
-         Render (Express API, repo root) ──► Neon Postgres (ap-southeast-1)
-                                        └──► S3 ap-south-1 (design uploads)
+         Render (Express API, repo: Mexos-studio) ──► Neon Postgres (ap-southeast-1)
+                                                 └──► S3 ap-south-1 (design uploads)
 ```
 
-Prerequisites: this repo pushed to GitHub, a Render account, a Vercel account.
+The apps live in **separate repos**: this repo is the backend; the frontend was
+split out to `mexos-studio-frontend` (2026-07-09, history preserved).
+
+Prerequisites: both repos pushed to GitHub, a Render account, a Vercel account.
 Both platforms deploy on push once connected.
 
 ---
@@ -52,10 +55,10 @@ Boot-audit expectations on this initial config (all intentional):
 
 ## 2. Frontend → Vercel
 
-1. Vercel Dashboard → **Add New → Project** → import the same GitHub repo.
-2. **Root Directory: `frontend`** (critical — the repo root is the backend).
-   Framework preset auto-detects Next.js; leave build/output defaults.
-3. Environment variable (all environments):
+1. Vercel Dashboard → **Add New → Project** → import the
+   **`mexos-studio-frontend`** repo (its root is the Next.js app; leave Root
+   Directory and build/output at their defaults — Next.js auto-detects).
+2. Environment variable (all environments):
 
    ```
    NEXT_PUBLIC_API_URL=https://mexos-api.onrender.com/api/v1
@@ -63,7 +66,7 @@ Boot-audit expectations on this initial config (all intentional):
 
    (Use your real Render service URL; add `/api/v1`.)
 
-4. Deploy, note the production URL (e.g. `https://mexos-studio.vercel.app`).
+3. Deploy, note the production URL (e.g. `https://mexos-studio.vercel.app`).
 
 ## 3. Wire them together
 
