@@ -1,0 +1,51 @@
+# Render Blueprint — backend API only (the Next.js frontend deploys to Vercel).
+# Region pinned to Singapore to sit next to the Neon Postgres (ap-southeast-1).
+# See deploy/render/RENDER_VERCEL_DEPLOY.md for the full walkthrough.
+services:
+  - type: web
+    name: mexos-api
+    runtime: node
+    region: singapore
+    plan: free # free spins down after 15 min idle (~50s cold start); upgrade to starter to keep it warm
+    # migrate deploy runs at build time (preDeployCommand needs a paid plan);
+    # it is a no-op when the schema is already current.
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build && npx prisma migrate deploy
+    startCommand: node dist/server.js
+    healthCheckPath: /api/health/live
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY # Render fronts the service with a proxy; needed for real client IPs (rate limiting)
+        value: 'true'
+      - key: DATABASE_URL # Neon pooled connection string (sslmode=require)
+        sync: false
+      # Boot audit requires 32+ char distinct secrets — Render's generated values qualify.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_GUEST_SECRET
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: CORS_ORIGINS # comma-separated; set to the Vercel prod URL + custom domain
+        sync: false
+      # WhatsApp-only OTP: stays on console (logged, not sent) until the Business
+      # API is approved. OTP_PROVIDER=whatsapp without creds is a fatal boot error.
+      - key: OTP_PROVIDER
+        value: console
+      - key: S3_REGION
+        value: ap-south-1
+      - key: S3_BUCKET
+        value: mexos-product-images-713054632843-ap-south-1-an
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      # Payments stay on the stub until all three Razorpay values are set
+      # (setting only KEY_ID fails the boot audit by design).
+      - key: PAYMENT_GATEWAY
+        value: razorpay
