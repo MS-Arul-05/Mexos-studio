@@ -1,0 +1,133 @@
+# AWS free-tier production topology for the Mexos Studio API.
+#
+#   Netlify frontend (https://mexos.netlify.app)
+#     └─► CloudFront (terminates HTTPS, redirect-to-https)
+#           └─► EC2 t3.micro, ap-south-1 (this box, plain HTTP :80)
+#                 nginx ─► api (:4000, image pulled from ECR)
+#                            ├─► AWS RDS PostgreSQL 16 (managed — NOT a container here)
+#                            ├─► redis (shared rate limits + notification queue)
+#                            └─► S3 (design uploads)
+#
+# Deliberate omissions vs docker-compose.prod.yml:
+#   - NO postgres container: the database is AWS RDS (DATABASE_URL in .env must
+#     end with ?schema=public&sslmode=require).
+#   - NO certbot/TLS: CloudFront terminates HTTPS; this box only ever speaks
+#     HTTP :80 to CloudFront. Keep ENFORCE_HTTPS=false and TRUST_PROXY=true.
+#   - NO monitoring/exporter containers: the box has 1 GB RAM (plus a 2 GB
+#     swapfile) — keep it to exactly these three containers.
+#
+# Files expected NEXT TO this compose file on the EC2 box (e.g. ~/mexos):
+#   .env             gitignored runtime secrets (start from .env.example).
+#                    Must also define the image to run, e.g.
+#                    API_IMAGE=123456789012.dkr.ecr.ap-south-1.amazonaws.com/mexos-api:v1
+#   nginx-aws.conf   reverse-proxy config, mounted read-only into nginx.
+#
+# Each deploy (run from this directory):
+#   aws ecr get-login-password --region ap-south-1 \
+#     | docker login --username AWS --password-stdin 123456789012.dkr.ecr.ap-south-1.amazonaws.com
+#   docker compose -f docker-compose.aws.yml pull api
+#   # Migrate BEFORE the new code serves traffic (same image, one-shot run):
+#   docker run --rm --env-file .env 123456789012.dkr.ecr.ap-south-1.amazonaws.com/mexos-api:v1 npx prisma migrate deploy
+#   docker compose -f docker-compose.aws.yml up -d
+
+# Bounded container logs so a chatty process can never fill the 8 GB root disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  api:
+    # Built locally, pushed to ECR, pulled here — never built on the 1 GB box.
+    image: ${API_IMAGE:?Set API_IMAGE in .env to your ECR image URI (account.dkr.ecr.ap-south-1.amazonaws.com/mexos-api:tag)}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      # api talks to redis over the private compose network, not the host.
+      # DATABASE_URL stays in .env and points at RDS.
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Health: the image ships its own HEALTHCHECK (GET /api/health), so no
+    # override is needed — `docker ps` shows (healthy) and nginx's
+    # service_healthy gate below uses it.
+    # ── Container hardening (mirrors docker-compose.prod.yml) ──
+    read_only: true # immutable root filesystem
+    tmpfs:
+      - /tmp # writable scratch only, in memory
+    cap_drop:
+      - ALL # drop all Linux capabilities
+    security_opt:
+      - no-new-privileges:true # block setuid privilege escalation
+    ulimits:
+      nofile: 65535
+    deploy:
+      resources:
+        limits: # cap blast radius on the 1 GB box
+          memory: 512M
+    # Only nginx should reach the app — private network only, no host port.
+    expose:
+      - '4000'
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF persistence + noeviction: the notification queue must never silently
+    # drop jobs under memory pressure (rate-limit keys are small and TTL-bound
+    # anyway). No password: redis has no host port and is reachable only on the
+    # private compose network — matches REDIS_URL=redis://redis:6379.
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    security_opt:
+      - no-new-privileges:true
+    # No host port — reachable only on the private network.
+    expose:
+      - '6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: # 256mb data cap + AOF/process overhead
+          memory: 320M
+    logging: *default-logging
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    # CloudFront is the only intended client and terminates HTTPS for viewers,
+    # so this box exposes plain HTTP :80 only (no certbot, no 443).
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx-aws.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy # wait for the image HEALTHCHECK to pass
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging: *default-logging
+
+volumes:
+  redisdata:

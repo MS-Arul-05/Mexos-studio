@@ -1,0 +1,4 @@
+# cloud-init and on-box shell scripts must stay LF — a CRLF shebang breaks
+# them silently (`/bin/bash^M: bad interpreter`). This repo has
+# core.autocrlf=true on Windows, so pin these explicitly.
+*.sh text eol=lf
