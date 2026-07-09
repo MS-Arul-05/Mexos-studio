@@ -6,13 +6,14 @@ export interface ConfigAuditInput {
   jwtRefreshSecret: string;
   jwtGuestSecret: string;
   adminApiKey?: string;
-  smsProvider: string;
+  otpProvider: string;
   paymentGateway: string;
   paymentKeyId?: string;
   paymentKeySecret?: string;
   paymentWebhookSecret?: string;
   whatsappProvider: string;
   whatsappApiToken?: string;
+  whatsappPhoneNumberId?: string;
   whatsappVerifyToken?: string;
   whatsappAppSecret?: string;
   metaToken?: string;
@@ -116,10 +117,15 @@ export function auditConfig(cfg: ConfigAuditInput): ConfigAudit {
     );
   }
 
-  if (cfg.smsProvider === 'console') {
-    warnings.push(
-      'SMS_PROVIDER=console — OTPs are only logged, not sent. Configure a real provider.',
-    );
+  // ── OTP delivery: WhatsApp-only in production; console silently drops OTPs ──
+  if (cfg.otpProvider === 'console') {
+    warnings.push('OTP_PROVIDER=console — OTPs are only logged, not sent. Configure WhatsApp OTP.');
+  } else if (cfg.otpProvider === 'whatsapp') {
+    if (!cfg.whatsappApiToken || !cfg.whatsappPhoneNumberId) {
+      errors.push(
+        'OTP_PROVIDER=whatsapp but WHATSAPP_API_TOKEN/WHATSAPP_PHONE_NUMBER_ID is missing — OTPs would silently fall back to console.',
+      );
+    }
   }
   if (!cfg.metaToken) {
     warnings.push('META_CONVERSIONS_API_TOKEN missing — server-side conversion events are no-op.');
@@ -138,13 +144,14 @@ export function enforceProductionConfig(): void {
     jwtRefreshSecret: env.JWT_REFRESH_SECRET,
     jwtGuestSecret: env.JWT_GUEST_SECRET,
     adminApiKey: env.ADMIN_API_KEY,
-    smsProvider: env.SMS_PROVIDER,
+    otpProvider: env.OTP_PROVIDER,
     paymentGateway: env.PAYMENT_GATEWAY,
     paymentKeyId: env.PAYMENT_GATEWAY_KEY_ID,
     paymentKeySecret: env.PAYMENT_GATEWAY_KEY_SECRET,
     paymentWebhookSecret: env.PAYMENT_WEBHOOK_SECRET,
     whatsappProvider: env.WHATSAPP_PROVIDER,
     whatsappApiToken: env.WHATSAPP_API_TOKEN,
+    whatsappPhoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID,
     whatsappVerifyToken: env.WHATSAPP_VERIFY_TOKEN,
     whatsappAppSecret: env.WHATSAPP_APP_SECRET,
     metaToken: env.META_CONVERSIONS_API_TOKEN,

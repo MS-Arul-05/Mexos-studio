@@ -2,7 +2,7 @@
 
 Everything is pluggable via env. For each integration below: create the account →
 put credentials in the server's environment (secret manager, **not** a committed file)
-→ restart. No code changes needed (the SMS adapters are now implemented too).
+→ restart. No code changes needed (the WhatsApp OTP adapter is implemented too).
 
 > Rule of thumb: a provider stays in "dev/stub" mode until its credentials are present.
 > The boot audit (`enforceProductionConfig`) warns about anything still on a stub.
@@ -24,32 +24,29 @@ put credentials in the server's environment (secret manager, **not** a committed
 
 That's it — the app already uses `DATABASE_URL` everywhere.
 
-## 2. Real OTP (SMS)
+## 2. Real OTP (WhatsApp)
 
-Two adapters are implemented. Pick one.
+WhatsApp (Meta Cloud API) is the only OTP channel — SMS was dropped per client
+decision (2026-07-09). It shares the WhatsApp Business account used for order
+notifications (§5).
 
-**MSG91 (recommended, India):**
-
-1. Create an MSG91 account, complete **DLT** registration, create a **Flow template**
-   containing an `{{otp}}` variable, and copy the template id + authkey.
-2. Env:
+1. Get the WhatsApp Business API approved (Meta Business Manager → WhatsApp →
+   API setup) and copy the **permanent access token** + **phone number id**.
+2. Create an **Authentication**-category message template (e.g. `otp_login`)
+   with the one-time-code body + copy-code button, and wait for approval.
+3. Env:
    ```
-   SMS_PROVIDER=msg91
-   SMS_PROVIDER_API_KEY=<authkey>
-   SMS_TEMPLATE_ID=<flow template id>
+   OTP_PROVIDER=whatsapp
+   WHATSAPP_API_TOKEN=<permanent access token>
+   WHATSAPP_PHONE_NUMBER_ID=<phone number id>
+   WHATSAPP_OTP_TEMPLATE=otp_login      # your approved template's name
+   WHATSAPP_OTP_LANGUAGE=en             # the template's language code
    ```
 
-**Twilio (alternative):**
-
-```
-SMS_PROVIDER=twilio
-TWILIO_ACCOUNT_SID=ACxxxx…
-TWILIO_AUTH_TOKEN=xxxxx
-TWILIO_FROM=+1XXXXXXXXXX     # a Twilio number (or messaging service sender)
-```
-
-Restart → `POST /api/auth/otp/send` now sends a real SMS (no more console logging).
-The 3/hour/number rate limit still applies.
+Restart → `POST /api/auth/otp/send` now sends a real WhatsApp message (no more
+console logging). The 3/hour/number rate limit still applies. Note: in
+production, `OTP_PROVIDER=whatsapp` without the token/phone number id is a
+fatal boot error (never a silent console fallback).
 
 ## 3. Real payment gateway (Razorpay)
 

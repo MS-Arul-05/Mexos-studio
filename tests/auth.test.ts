@@ -1,5 +1,5 @@
-// Mock the repository + SMS provider so auth logic is tested end-to-end over HTTP
-// without a live DB or SMS gateway.
+// Mock the repository + OTP provider so auth logic is tested end-to-end over HTTP
+// without a live DB or WhatsApp gateway.
 jest.mock('../src/modules/auth/auth.repository', () => ({
   authRepository: {
     countOtpRequestsSince: jest.fn(),
@@ -18,14 +18,14 @@ jest.mock('../src/modules/auth/auth.repository', () => ({
     rotateRefreshToken: jest.fn(),
   },
 }));
-jest.mock('../src/modules/auth/sms', () => ({
-  smsProvider: { name: 'test', sendOtp: jest.fn().mockResolvedValue(undefined) },
+jest.mock('../src/modules/auth/otp', () => ({
+  otpProvider: { name: 'test', sendOtp: jest.fn().mockResolvedValue(undefined) },
 }));
 
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { authRepository } from '../src/modules/auth/auth.repository';
-import { smsProvider } from '../src/modules/auth/sms';
+import { otpProvider } from '../src/modules/auth/otp';
 import { hashOtp } from '../src/utils/crypto';
 import { signAccessToken } from '../src/utils/jwt';
 import { authGuard } from '../src/middleware/auth-guard';
@@ -33,7 +33,7 @@ import { AppError } from '../src/utils/app-error';
 import type { NextFunction, Request, Response } from 'express';
 
 const repo = authRepository as jest.Mocked<typeof authRepository>;
-const sms = smsProvider as unknown as { sendOtp: jest.Mock };
+const sms = otpProvider as unknown as { sendOtp: jest.Mock };
 const app = createApp();
 
 const MOBILE = '+919876543210';

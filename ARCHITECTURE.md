@@ -23,7 +23,7 @@ flowchart TD
   end
 
   repo --> db[(PostgreSQL 16)]
-  prov --> sms[SMS: MSG91/Twilio/console]
+  prov --> otp[OTP: WhatsApp/console]
   prov --> pay[Payments: Razorpay/stub]
   prov --> store[Storage: S3/R2/stub]
   prov --> wa[WhatsApp: Meta/noop]

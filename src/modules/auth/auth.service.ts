@@ -1,5 +1,5 @@
 import { authRepository } from './auth.repository';
-import { smsProvider } from './sms';
+import { otpProvider } from './otp';
 import { env } from '../../config/env';
 import { AppError } from '../../utils/app-error';
 import { parseDurationMs } from '../../utils/duration';
@@ -50,7 +50,7 @@ async function issueTokens(user: { id: string; mobileNumber: string }): Promise<
 
 export const authService = {
   /**
-   * Generate + store a hashed OTP and dispatch it via the SMS provider.
+   * Generate + store a hashed OTP and dispatch it via the OTP provider (WhatsApp).
    * Rate-limited to OTP_MAX_PER_HOUR requests/hour/number (Epic 3.1).
    * Returns the TTL so the client can show a countdown. Never returns the code.
    */
@@ -72,7 +72,7 @@ export const authService = {
     // Invalidate any previous unverified OTPs so only the latest code is valid.
     await authRepository.invalidatePreviousOtps(mobileNumber);
     await authRepository.createOtpRequest({ mobileNumber, otpHash, expiresAt });
-    await smsProvider.sendOtp(mobileNumber, code);
+    await otpProvider.sendOtp(mobileNumber, code);
 
     return { expiresInSeconds: Math.floor(ttlMs / 1000) };
   },

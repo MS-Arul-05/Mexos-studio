@@ -13,7 +13,7 @@ in code, and kept swappable.
 | 2   | Order status sync (manual vs courier API)            | ⏳ Assumed                               | Manual via `PATCH /api/admin/orders/:id/status`                                               | `OrderStatusHistory` append-only table supports a courier-webhook source later without schema change                         |
 | 3   | Payment gateway                                      | ⏳ Assumed (recommended: Razorpay)       | **Razorpay** (`PAYMENT_GATEWAY=razorpay`)                                                     | `PaymentProvider` interface + razorpay/stub adapters (built). See `research/payment-gateway-comparison.md`                   |
 | 4   | WhatsApp Business API provider                       | ⏳ Assumed (recommended: Meta Cloud API) | Click-to-chat now; Business API as **no-op** (`WHATSAPP_PROVIDER=noop`); `meta` adapter built | `NotificationProvider` interface + noop/meta adapters, swapped by env config. See `research/whatsapp-provider-comparison.md` |
-| 5   | SMS/OTP provider                                     | ⏳ Assumed                               | `console` provider — logs OTP, no external calls (`SMS_PROVIDER=console`)                     | `SmsProvider` interface, swapped by env config (Step 3)                                                                      |
+| 5   | OTP delivery channel                                 | ✅ Confirmed (2026-07-09): WhatsApp only | `console` provider — logs OTP, no external calls (`OTP_PROVIDER=console`) until WA creds set  | `OtpProvider` interface (console/whatsapp adapters), swapped by env config. SMS (MSG91/Twilio) removed per client decision   |
 
 Legend: ⏳ Assumed (using documented default, awaiting client confirmation) · ✅ Confirmed
 
